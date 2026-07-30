@@ -1,0 +1,30 @@
+Post http://localhost:3000/api/buy/5
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Niwicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODUyNjc3MTYsImV4cCI6MTc4NTI3MTMxNn0.63pimMja5NVLLSaVQM8LK1jNa5oVe4LaBoXXQZyNPFA
+Content-Type:application/json
+
+{
+
+}
+### student confirm paying
+PATCH  http://localhost:3000/api/buy/confirm/2
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Niwicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODUyMjk4NjgsImV4cCI6MTc4NTIzMzQ2OH0.Lx-EfvmEW_ie9G1YC6KYdorMa4tcbhsInjtjJ4xhnXg
+Content-Type:application/json
+
+{
+    "paymentMethod":"instapay",
+    "transactionId":"9289898398938"
+
+}
+### get Ins Purchase
+GET   http://localhost:3000/api/buy/myPurchases
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODUxMDI2NzIsImV4cCI6MTc4NTEwNjI3Mn0.KbwMn0SAFUGgsC4Rs5fS2OY59P5PXx7DP7bMXPs1oZI
+
+### instarctor update status of purchase
+PATCH  http://localhost:3000/api/buy/update/3
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODUzNDg5MjYsImV4cCI6MTc4NTM1MjUyNn0.CwCRK4Ic9M4wXolqPUWB0uKaVMtOIeU4-XnCkWGqiCY
+Content-Type: application/json
+
+{
+    "status":"PAID"
+
+}

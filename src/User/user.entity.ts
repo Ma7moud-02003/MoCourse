@@ -1,9 +1,11 @@
+import { Exclude } from "class-transformer";
 import { CourseEntity } from "src/course/course.entity";
 import { EnrollmentEntity } from "src/enrollment/enrollment.entity";
+import { PaymentInfoEntity } from "src/instructor-payment-info/paymentInfo.entity";
 import { ProgressEntity } from "src/progress/progress.entity";
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
 import { UserRoles } from "src/utils/enums/userRole.enum";
-import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
  @Entity({name:'users'})
 export class UserEntity{
     @PrimaryGeneratedColumn()
@@ -14,7 +16,7 @@ export class UserEntity{
 
     @Column({unique:true})
     email!:string;
-
+    @Exclude()
     @Column({length:150})
     password!:string;
 
@@ -27,12 +29,16 @@ export class UserEntity{
    @Column({default: false})
     isVerified!: boolean
 
+  
+
     @CreateDateColumn({type:'timestamp',default:()=>CURRENT_TIMESTAMP})
     createdAt!:Date
 
 
     @UpdateDateColumn({type:'timestamp',default:()=>CURRENT_TIMESTAMP,onUpdate:CURRENT_TIMESTAMP})
     updatedAt!:Date
+
+    // @OneToMany(()=>CourseEntity,(course)=>course.Instractor)
 
     @OneToMany(()=>CourseEntity,(course)=>course.Instractor)
     courses!:CourseEntity[]
@@ -42,5 +48,7 @@ export class UserEntity{
    
    @OneToMany(()=>EnrollmentEntity,(enroll)=>enroll.user)
    enrolls!:EnrollmentEntity[]
+@OneToOne(()=>PaymentInfoEntity,(payment)=>payment.instractor)
+paymentInfo!:PaymentInfoEntity
 
 }

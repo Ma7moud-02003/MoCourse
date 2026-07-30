@@ -1,0 +1,42 @@
+### get all courses
+GET  http://localhost:3000/api/course/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Niwicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODUwMTA4NDEsImV4cCI6MTc4NTAxNDQ0MX0.wspAV6lflqdgjCAjfKQMNXA-oJ4cRxwT_Sc5h7W3hBQ
+
+### get my courses as instractor
+GET  http://localhost:3000/api/course/myCourses
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODUyMzIyMzMsImV4cCI6MTc4NTIzNTgzM30.2SsI53Ptx-1XULTIuzKjXco89WCKZZT2E4UewwQThI0
+
+### enroll course for student
+POST   http://localhost:3000/api/enrollment/5
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Niwicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODUwMTQ1MjcsImV4cCI6MTc4NTAxODEyN30.Hx_avy14JibjxlzaIb8F8tZdfXVo8ZJhX1vfrjuBHDk
+### get user enrollment courses
+GET  http://localhost:3000/api/enrollment
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Niwicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODUwMTQ1MjcsImV4cCI6MTc4NTAxODEyN30.Hx_avy14JibjxlzaIb8F8tZdfXVo8ZJhX1vfrjuBHDk
+
+### Update course 
+PATCH   http://localhost:3000/api/course/update/5
+Authorization: BearereyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODUyMzUzOTAsImV4cCI6MTc4NTIzODk5MH0.eluQhs_1Bt8f2EWz7z5Sixkb--dxNFq6_1RKfe_t3QU
+Content-Type: application/json
+
+{
+    "title": "Graphic Design Masterclass: Photoshop, Illustrator & Branding",
+    "describtion": "Learn professional graphic design from scratch using Adobe Photoshop and Illustrator. Create logos, social media posts, business cards, flyers, posters, and complete branding projects while mastering color theory, typography, composition, and design principles.",
+    "price": 5400,
+    "covers": [
+      "Design professional logos and brand identities",
+      "Learn React fundamentals",
+      "Create social media posts and marketing materials",
+      "Understand typography, color theory, and composition",
+      "Build a complete branding portfolio"
+    ],
+    "level": "advanced",
+    "isPublished": false,
+    "categoryId":2,
+    "discountPrice": 4200,
+    "duration": 80
+    
+}
+
+### delete course 
+DELETE    http://localhost:3000/api/course/delete/5
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzg1MjM2Njk1LCJleHAiOjE3ODUyNDAyOTV9.hInhHKuym1RhwvuaOBtlLqI2LgNuFM0duYJqL8lWuF4

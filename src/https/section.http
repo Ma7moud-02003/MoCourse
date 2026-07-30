@@ -1,0 +1,20 @@
+Post http://localhost:3000/api/section
+Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODUzMzU5NDIsImV4cCI6MTc4NTMzOTU0Mn0.91NCQyj7RGfbH0IdN4p-XHHNnRpLe_kKGr2YsgdqbU8
+Content-Type:application/json
+
+{
+"title":"Intro In Graphic Design",
+"order":1,
+"courseId":5
+}
+### getting all sections 
+Get http://localhost:3000/api/section/sections/5
+Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Niwicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODUzNTYxNzEsImV4cCI6MTc4NTM1OTc3MX0.mxH5lg2bxis0ZljcIx1jv7euKMkRdtzG1AA4TlUjRTo
+###
+PATCH  http://localhost:3000/api/section/update/1
+Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzg1MzU3ODA3LCJleHAiOjE3ODUzNjE0MDd9.U4rcVETqynIyA8LZc75TfeFXEuCWAM0eBRR38DOeVDc
+Content-Type:application/json
+
+{
+"title":"Intro In Graphic Design & implemnt every single topice"
+}

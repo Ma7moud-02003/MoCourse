@@ -15,8 +15,8 @@ export class SectionEntity{
     title!:string;
 
  
-  @Column({length:100})
-    order!:string;
+  @Column()
+    order!:number;
 
  
 

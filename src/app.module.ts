@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { ClassSerializerInterceptor, Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -17,6 +17,11 @@ import { SectionEntity } from './section/section.entity';
 import { LessonsEntity } from './lesson/lessons.entity';
 import { EnrollmentEntity } from './enrollment/enrollment.entity';
 import { ProgressEntity } from './progress/progress.entity';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { PurchaseMoule } from './Purchase/purchase.module';
+import { PurchaseEntity } from './Purchase/purchase.entity';
+import { PaymentinfoModule } from './instructor-payment-info/paymentinfo/paymentinfo.module';
+import { PaymentInfoEntity } from './instructor-payment-info/paymentInfo.entity';
 
 
 
@@ -38,13 +43,18 @@ import { ProgressEntity } from './progress/progress.entity';
           type: 'postgres',
           host: 'localhost',
           synchronize: process.env.NODE_ENV !=='production',
-          entities: [UserEntity,CourseEntity,CategoryEntity,SectionEntity,LessonsEntity,EnrollmentEntity,ProgressEntity]
+          entities: [UserEntity,CourseEntity,CategoryEntity,SectionEntity,LessonsEntity,EnrollmentEntity,ProgressEntity,PurchaseEntity,PaymentInfoEntity]
         }
       }
     }),
      
-    UserModule, CategoryModule, CourseModule, SectionModule, LessonModule, EnrollmentModule, ProgressModule,],
+    UserModule, CategoryModule, CourseModule, SectionModule, LessonModule, EnrollmentModule, ProgressModule,PurchaseMoule, PaymentinfoModule],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService,
+    {
+      provide:APP_INTERCEPTOR,
+      useClass:ClassSerializerInterceptor
+    }
+  ],
 })
 export class AppModule { }

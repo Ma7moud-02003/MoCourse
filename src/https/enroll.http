@@ -1,0 +1,2 @@
+GET  http://localhost:3000/api/enrollment/my_enrollments
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Niwicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODUzNTU0NzQsImV4cCI6MTc4NTM1OTA3NH0.qn0VwDCtlijcRnog7ezrXxE3LJAHw7B3AlA8n4-UMYY

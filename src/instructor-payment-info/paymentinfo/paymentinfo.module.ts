@@ -1,0 +1,13 @@
+import { Module } from '@nestjs/common';
+import { PaymentinfoController } from './paymentinfo.controller';
+import { PaymentinfoService } from './paymentinfo.service';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { PaymentInfoEntity } from '../paymentInfo.entity';
+import { CommonModule } from 'src/common/common.module';
+
+@Module({
+  imports:[TypeOrmModule.forFeature([PaymentInfoEntity]),CommonModule],
+  controllers: [PaymentinfoController],
+  providers: [PaymentinfoService]
+})
+export class PaymentinfoModule {}

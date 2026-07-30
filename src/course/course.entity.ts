@@ -3,7 +3,7 @@ import { EnrollmentEntity } from "src/enrollment/enrollment.entity";
 import { SectionEntity } from "src/section/section.entity";
 import { UserEntity } from "src/User/user.entity";
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
-import { UserRoles } from "src/utils/enums/userRole.enum";
+import { CourseLevel } from "src/utils/enums/level.enum";
 import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @Entity({name:'courses'})
@@ -16,14 +16,29 @@ export class CourseEntity{
 
     @Column({nullable:true})
     describtion!:string;
-
+  
     @Column({})
     price!:number;
 
-    
+    @Column({type:'text',array:true})
+    covers!:string[]
+
     @Column({nullable:true})
      thumbnail !:string;   //  صورة الكورس
+     @Column()
+     publicId!: string;
 
+     @Column({type:'enum', enum:CourseLevel,default:CourseLevel.INTERMEDIATE})
+     level!:CourseLevel
+
+     @Column({ default: false })
+     isPublished!: boolean;
+  
+     @Column({ nullable: true })
+     discountPrice!: number;
+      
+     @Column({ default: 0 })
+    duration!: number;
   
     @CreateDateColumn({type:'timestamp',default:()=>CURRENT_TIMESTAMP})
     createdAt!:Date
@@ -42,8 +57,8 @@ export class CourseEntity{
     @OneToMany(()=>SectionEntity,(section)=>section.course)
     sections!:SectionEntity[]
     
-        @OneToMany(()=>EnrollmentEntity,(enroll)=>enroll.course)
-       enrolls!:EnrollmentEntity[]
+    @OneToMany(()=>EnrollmentEntity,(enroll)=>enroll.course)
+    enrolls!:EnrollmentEntity[]
     
     
 }
