@@ -19,7 +19,7 @@ function build(opts: { owns?: boolean; enrolled?: boolean } = {}) {
 }
 
 const dto: any = {
-  title: 'Quiz', courseId: 5, passMark: 60, totalMarks: 100, timeLimit: 10, quizTarget: 'course',
+  title: 'Quiz', courseId: 5, passMark: 60, timeLimit: 10, quizTarget: 'course',
 };
 
 describe('QuizService', () => {
@@ -46,6 +46,12 @@ describe('QuizService', () => {
     await expect(service.creatNewQuiz(3, dto)).rejects.toBeInstanceOf(ForbiddenException);
     expect(courseService.verifyingInstractorOwnTheCourse).toHaveBeenCalledWith(3, 5);
     expect(quizRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('creatNewQuiz starts totalMarks at 0 and ignores a totalMarks sent by the client', async () => {
+    const { service, quizRepo } = build();
+    await service.creatNewQuiz(3, { ...dto, totalMarks: 500 });
+    expect(quizRepo.create.mock.calls[0][0].totalMarks).toBe(0);
   });
 
   it('creatNewQuiz lets the course owner create a quiz', async () => {
