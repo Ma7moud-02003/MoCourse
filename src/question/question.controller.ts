@@ -33,7 +33,7 @@ return this.question.addQuestins(payload.id,body);
     return this.question.updateQuestion(payload.id, questionId, body);
   }
  
- @Get('quiz-questions')
+ @Get('quiz-questions/:quizId')
  @Roles(UserRoles.ADMIN,UserRoles.INSTRACTOR)
  @UseGuards(AuthGuard,Roleguard)
  get(@Param('quizId',new ParseIntPipe()) quizId:number,@Payload() payload:paylodType.PayloadType){
