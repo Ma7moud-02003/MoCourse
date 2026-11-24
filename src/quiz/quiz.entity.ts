@@ -34,7 +34,8 @@ export class QuizEntity {
     @Column({ default: false })
     shuffleChoices!: boolean;
 
-    @Column()
+    // sum of the question marks, kept up to date by the server
+    @Column({ default: 0 })
     totalMarks!: number;
 
     @Column({ type: 'text', nullable: true })
