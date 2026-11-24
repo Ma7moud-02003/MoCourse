@@ -12,27 +12,12 @@ import { EnrollmentStatus } from 'src/utils/enums/enroll.enum';
 export class EnrollmentController {
     constructor(private enrollService: EnrollmentService) { }
 
-    @Post(':id')
-    @Roles(UserRoles.STUDENT)
-    @UseGuards(AuthGuard, Roleguard)
-    enrollCourse(@Param('id', new ParseIntPipe) id, @Payload() payload: paylodType.PayloadType) {
-        return this.enrollService.enrollCourse(id, payload.id);
-    }
-
     @Get('my_enrollments')
     @Roles(UserRoles.STUDENT)
     @UseGuards(AuthGuard, Roleguard)
     getEnrolledCourses(@Payload() payload: paylodType.PayloadType,@Query('status') status:EnrollmentStatus) {
         console.log(payload);
         return this.enrollService.getStudentCourses(payload.id);
-    }
-
-
-      @Get('isStudentEnroll/:courseId')
-    @UseGuards(AuthGuard, Roleguard)
-    verifyEnrollment(@Param('courseId', new ParseIntPipe) courseId: number, @Payload() payload: paylodType.PayloadType) {
-        console.log(payload);
-        return this.enrollService.verifyStudentEnrollment(courseId, payload.id);
     }
 
 
@@ -55,7 +40,7 @@ export class EnrollmentController {
     @Get('isStudentEnroll/:courseId')
     @UseGuards(AuthGuard)
     isStudentEnrolls(@Param('courseId', new ParseIntPipe) courseId: number, @Payload() payload: paylodType.PayloadType) {
-        return this.enrollService.verifyStudentEnrollment(courseId, payload.id);
+        return this.enrollService.verifyStudentEnrollment(payload.id, courseId);
     }
 
 
