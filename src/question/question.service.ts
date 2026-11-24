@@ -8,6 +8,7 @@ import { UpdateQuestionDto } from './dtos/updateQuestion.dto';
 import { ChoiceEntity } from 'src/choice/choise.entity';
 import { QuizEntity } from 'src/quiz/quiz.entity';
 import { syncTotalMarks } from 'src/quiz/total-marks';
+import { validateChoices } from './question-rules';
 
 
 @Injectable()
@@ -26,6 +27,7 @@ public async addQuestins(insId:number,dto:CreateQuestionsDto){
 if(!insId||!dto.quizId||!dto.questions.length) throw new BadRequestException();
 const insVerifyed=await this.quizService.verifyingInstractors(dto.quizId,insId);
 if(!insVerifyed) throw new ForbiddenException();
+dto.questions.forEach(q=>validateChoices(q.type,q.choices));
 const questions=dto.questions.map(questionDto=>{
     const question=this.repo.create({
         question:questionDto.question,
@@ -79,6 +81,7 @@ public async updateQuestion(insId: number, questionId: number, dto: UpdateQuesti
 
   return this.repo.manager.transaction(async (manager) => {
     const markBefore = existingQuestion.mark;
+    const typeBefore = existingQuestion.type;
     existingQuestion.question = dto.question ?? existingQuestion.question;
     existingQuestion.type = dto.type ?? existingQuestion.type;
     existingQuestion.mark = dto.mark ?? existingQuestion.mark;
@@ -96,17 +99,8 @@ public async updateQuestion(insId: number, questionId: number, dto: UpdateQuesti
         }
       }
 
-      // امسح بس الاختيارات اللي اتشالت
-      const keptIds = new Set(
-        dto.choices.filter((c) => c.id !== undefined).map((c) => c.id),
-      );
-      const removed = existingQuestion.choices.filter((c) => !keptIds.has(c.id));
-      if (removed.length > 0) {
-        await manager.remove(removed);
-      }
-
       // حدّث الموجود في مكانه، وأنشئ الجديد
-      existingQuestion.choices = dto.choices.map((incoming) => {
+      const finalChoices = dto.choices.map((incoming) => {
         const current =
           incoming.id !== undefined ? existingById.get(incoming.id) : undefined;
 
@@ -123,6 +117,22 @@ public async updateQuestion(insId: number, questionId: number, dto: UpdateQuesti
           isCorrect: incoming.isCorrect,
         });
       });
+
+      // check the final state before anything is removed or saved
+      validateChoices(existingQuestion.type, finalChoices);
+
+      // امسح بس الاختيارات اللي اتشالت
+      const keptIds = new Set(
+        dto.choices.filter((c) => c.id !== undefined).map((c) => c.id),
+      );
+      const removed = existingQuestion.choices.filter((c) => !keptIds.has(c.id));
+      if (removed.length > 0) {
+        await manager.remove(removed);
+      }
+      existingQuestion.choices = finalChoices;
+    } else if (dto.type !== undefined && dto.type !== typeBefore) {
+      // type changed without new choices: the current choices must fit the new type
+      validateChoices(existingQuestion.type, existingQuestion.choices);
     }
 
     const saved = await manager.save(existingQuestion);
