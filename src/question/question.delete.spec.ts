@@ -3,7 +3,7 @@ import { QuestionService } from './question.service';
 import { QuizService } from 'src/quiz/quiz.service';
 import { fakeExamDb } from 'src/quiz/exam-fake-db-spec';
 
-function build(opts: { published: boolean; questionIds: number[] }) {
+function build(opts: { published: boolean; questionIds: number[]; marks?: Record<number, number> }) {
   const db = fakeExamDb(opts);
   const courseService: any = {};
   const quizService = new QuizService(db.quizRepo, db.questionRepo, courseService, {} as any);
@@ -63,5 +63,37 @@ describe('exam guards under concurrency (simulated quiz-row lock)', () => {
       quizService.updateQuiz(10, 3, { isPublished: true } as any),
     ]);
     expect(state.quiz.isPublished && state.questions.length === 0).toBe(false);
+  });
+});
+
+const build2 = build;
+
+describe('totalMarks on add and delete', () => {
+  it('delete lowers totalMarks to the remaining question marks', async () => {
+    const { service, state } = build2({ published: false, questionIds: [1, 2], marks: { 1: 2, 2: 3 } });
+    await service.deleteQuestions(1, 3);
+    expect(state.quiz.totalMarks).toBe(3);
+  });
+
+  it('deleting the last question sets totalMarks to 0', async () => {
+    const { service, state } = build2({ published: false, questionIds: [1], marks: { 1: 4 } });
+    await service.deleteQuestions(1, 3);
+    expect(state.quiz.totalMarks).toBe(0);
+  });
+
+  it('adding questions sets totalMarks to the sum of all marks', async () => {
+    const { service, state } = build2({ published: false, questionIds: [1], marks: { 1: 2 } });
+    const dto: any = { quizId: 10, questions: [
+      { question: 'a', type: 'mcq', mark: 3, order: 2, choices: [] },
+      { question: 'b', type: 'mcq', mark: 5, order: 3, choices: [] },
+    ] };
+    await service.addQuestins(3, dto);
+    expect(state.quiz.totalMarks).toBe(10);
+  });
+
+  it('adding to a non-owned exam changes nothing', async () => {
+    const { service, state } = build2({ published: false, questionIds: [1], marks: { 1: 2 } });
+    await expect(service.addQuestins(99, { quizId: 10, questions: [{ question: 'a', type: 'mcq', mark: 3, order: 2, choices: [] }] } as any)).rejects.toBeInstanceOf(ForbiddenException);
+    expect(state.questions).toEqual([1]);
   });
 });
