@@ -12,6 +12,9 @@ function build() {
     remove: jest.fn(),
     create: jest.fn((_e, x) => x),
     save: jest.fn(async (x) => x),
+    findOne: jest.fn(async () => ({ id: 10 })),
+    sum: jest.fn(async () => 7),
+    update: jest.fn(),
   };
   const repo: any = {
     findOne: jest.fn().mockResolvedValue(existing),
@@ -51,5 +54,19 @@ describe('QuestionService.updateQuestion', () => {
     const { service, quizService } = build();
     quizService.verifyingInstractors.mockResolvedValue(false);
     await expect(service.updateQuestion(9, 1, {} as any)).rejects.toThrow();
+  });
+});
+
+describe('totalMarks follows the question marks', () => {
+  it('recomputes totalMarks when a question mark changes', async () => {
+    const { service, manager } = build();
+    await service.updateQuestion(3, 1, { mark: 5 } as any);
+    expect(manager.update).toHaveBeenCalledWith(expect.anything(), { id: 10 }, { totalMarks: 7 });
+  });
+
+  it('does not touch totalMarks when the mark is unchanged', async () => {
+    const { service, manager } = build();
+    await service.updateQuestion(3, 1, { question: 'new text' } as any);
+    expect(manager.update).not.toHaveBeenCalled();
   });
 });
