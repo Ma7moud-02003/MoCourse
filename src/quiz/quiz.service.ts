@@ -55,6 +55,8 @@ export class QuizService {
     };
   
         course = await this.courseService.getCourseDetails(dto.courseId);
+        const ownsCourse = await this.courseService.verifyingInstractorOwnTheCourse(insId, dto.courseId);
+        if (!ownsCourse) throw new ForbiddenException('You do not own this course');
         if (dto.sectionId || dto.lessonId) {throw new BadRequestException('Course quiz cannot have sectionId or lessonId');}
         quiz = this.quizRepo.create({
           ...quizData
@@ -144,7 +146,7 @@ export class QuizService {
     const isEnrolled = await this.enrollService.verifyStudentEnrollment(studentId, courseId);
     if (!isEnrolled) throw new ForbiddenException('You Need to purchase  course frist ');
     const quizes = await this.quizRepo.find({
-      where:{course:{id:courseId}},order:{createdAt:'desc'}
+      where:{course:{id:courseId},isPublished:true},order:{createdAt:'desc'}
     })
     return quizes;
   }
