@@ -13,7 +13,7 @@ function build(opts: { published: boolean; questionIds: number[] }) {
 }
 
 const dto: any = {
-  title: 'Quiz', courseId: 5, passMark: 60, totalMarks: 100, timeLimit: 10, quizTarget: 'course',
+  title: 'Quiz', courseId: 5, passMark: 60, timeLimit: 10, quizTarget: 'course',
 };
 
 describe('QuizService publish rules', () => {

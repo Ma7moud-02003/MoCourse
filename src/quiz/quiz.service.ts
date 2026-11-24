@@ -46,7 +46,7 @@ export class QuizService {
       shuffleChoices: dto.shuffleChoices,
       showResultImmediately: dto.showResultImmediately,
       isPublished: false,
-      totalMarks: dto.totalMarks,
+      totalMarks: 0,
       quizTarget: dto.quizTarget,
       course:{ id:dto.courseId},
       section:{id:dto.sectionId},
@@ -134,10 +134,6 @@ export class QuizService {
       }
     }
     quiz.isPublished = dto.isPublished;
-  }
-
-  if (dto.totalMarks !== undefined) {
-    quiz.totalMarks = dto.totalMarks;
   }
 
   if (dto.instructions !== undefined) {

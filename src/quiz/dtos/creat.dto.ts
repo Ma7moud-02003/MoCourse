@@ -28,10 +28,6 @@ export class CreateQuizDto {
   @Min(0)
   @Max(100)
   passMark!: number;
-   @IsInt()
-  @Min(0)
-  @Max(200)
- totalMarks!:number
 
   @IsInt()
   @Min(1)
