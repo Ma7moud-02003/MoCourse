@@ -81,7 +81,6 @@ public async updateQuestion(insId: number, questionId: number, dto: UpdateQuesti
 
   return this.repo.manager.transaction(async (manager) => {
     const markBefore = existingQuestion.mark;
-    const typeBefore = existingQuestion.type;
     existingQuestion.question = dto.question ?? existingQuestion.question;
     existingQuestion.type = dto.type ?? existingQuestion.type;
     existingQuestion.mark = dto.mark ?? existingQuestion.mark;
@@ -130,8 +129,8 @@ public async updateQuestion(insId: number, questionId: number, dto: UpdateQuesti
         await manager.remove(removed);
       }
       existingQuestion.choices = finalChoices;
-    } else if (dto.type !== undefined && dto.type !== typeBefore) {
-      // type changed without new choices: the current choices must fit the new type
+    } else {
+      // no new choices sent: the current choices must still fit the rules (any edit)
       validateChoices(existingQuestion.type, existingQuestion.choices);
     }
 
