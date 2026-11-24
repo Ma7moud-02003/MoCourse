@@ -98,9 +98,9 @@ public async updateQuestion(insId: number, questionId: number, dto: UpdateQuesti
           incoming.id !== undefined ? existingById.get(incoming.id) : undefined;
 
         if (current) {
-          current.text = incoming.text||current.text;
-          current.order = incoming.order||current.order;
-          current.isCorrect = incoming.isCorrect||false;
+          current.text = incoming.text ?? current.text;
+          current.order = incoming.order ?? current.order;
+          current.isCorrect = incoming.isCorrect ?? current.isCorrect;
           return current;
         }
 
