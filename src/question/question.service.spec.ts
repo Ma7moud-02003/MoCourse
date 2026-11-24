@@ -114,9 +114,29 @@ describe('choice rules on update', () => {
     await expect(service.updateQuestion(3, 1, { type: 'true_false' } as any)).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('a mark-only edit does not re-check the choices', async () => {
-    const { service, existing } = build();
+  it('rejects a mark-only edit while the existing choices are invalid', async () => {
+    const { service, existing, manager } = build();
     existing.choices.forEach((c: any) => (c.isCorrect = false)); // old bad data
-    await expect(service.updateQuestion(3, 1, { mark: 4 } as any)).resolves.toBeDefined();
+    await expect(service.updateQuestion(3, 1, { mark: 4 } as any)).rejects.toBeInstanceOf(BadRequestException);
+    expect(manager.save).not.toHaveBeenCalled();
+  });
+
+  it('rejects a text-only edit while the existing choices are invalid', async () => {
+    const { service, existing } = build();
+    existing.choices.forEach((c: any) => (c.isCorrect = false));
+    await expect(service.updateQuestion(3, 1, { question: 'new' } as any)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('allows fixing the choices together with the mark on an invalid question', async () => {
+    const { service, existing } = build();
+    existing.choices.forEach((c: any) => (c.isCorrect = false));
+    const res: any = await service.updateQuestion(3, 1, { mark: 4, choices: [{ id: 100, isCorrect: true }, { id: 101 }] } as any);
+    expect(res.mark).toBe(4);
+  });
+
+  it('a mark-only edit on a valid question still works', async () => {
+    const { service } = build();
+    const res: any = await service.updateQuestion(3, 1, { mark: 4 } as any);
+    expect(res.mark).toBe(4);
   });
 });
