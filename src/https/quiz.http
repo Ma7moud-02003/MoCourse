@@ -13,8 +13,7 @@ Content-Type: application/json
   "showResultImmediately": true,
   "isPublished": false,
   "courseId": 5,
-  "quizTarget":"course",
-  "totalMarks":120
+  "quizTarget":"course"
 }
  
 ### publish the exam (needs at least one question first)
