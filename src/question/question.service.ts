@@ -119,7 +119,7 @@ public async updateQuestion(insId: number, questionId: number, dto: UpdateQuesti
 async  deleteQuestions(questionId:number,insId:number){
 if(!questionId||!insId) throw new BadRequestException();
 const question=await this.repo.findOne({
-    where:{id:questionId},relations:{quiz:true},select:{quiz:{id:true}}
+    where:{id:questionId},relations:{quiz:true},select:{quiz:{id:true,isPublished:true}}
 })
 if(!question) throw new NotFoundException();
 
@@ -131,6 +131,12 @@ if(!question) throw new NotFoundException();
 
   if (!verified) {
     throw new ForbiddenException();
+  }
+  if (question.quiz.isPublished) {
+    const questionsCount = await this.repo.count({ where: { quiz: { id: question.quiz.id } } });
+    if (questionsCount <= 1) {
+      throw new BadRequestException('Unpublish the exam before deleting its last question');
+    }
   }
   return  this.repo.remove(question);
 }
