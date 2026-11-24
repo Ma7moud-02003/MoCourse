@@ -75,20 +75,23 @@ export class QuizService {
     throw new BadRequestException('Invalid quiz or instructor ID');
   }
 
-  const quiz = await this.quizRepo.findOne({
-    where: { id: quizId },
-  });
-
-  if (!quiz) {
-    throw new NotFoundException('Quiz not found');
-  }
-
   const isOwner = await this.verifyingInstractors(quizId, insId);
 
   if (!isOwner) {
     throw new ForbiddenException(
       'You are not allowed to update this quiz',
     );
+  }
+
+  // lock the quiz row so publish and question deletes run one at a time
+  return this.quizRepo.manager.transaction(async (manager) => {
+  const quiz = await manager.findOne(QuizEntity, {
+    where: { id: quizId },
+    lock: { mode: 'pessimistic_write' },
+  });
+
+  if (!quiz) {
+    throw new NotFoundException('Quiz not found');
   }
 
   if (dto.title !== undefined) {
@@ -125,7 +128,7 @@ export class QuizService {
 
   if (dto.isPublished !== undefined) {
     if (dto.isPublished && !quiz.isPublished) {
-      const questionsCount = await this.questionRepo.count({ where: { quiz: { id: quizId } } });
+      const questionsCount = await manager.count(QuestionEntity, { where: { quiz: { id: quizId } } });
       if (questionsCount === 0) {
         throw new BadRequestException('Add at least one question before publishing the exam');
       }
@@ -140,7 +143,8 @@ export class QuizService {
   if (dto.instructions !== undefined) {
     quiz.instructions = dto.instructions;
   }
-  return await this.quizRepo.save(quiz);
+  return await manager.save(quiz);
+  });
 }
   /**
    * get quizes belngs to student
