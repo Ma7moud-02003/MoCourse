@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EnrollmentEntity } from './enrollment.entity';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { CourseEntity } from 'src/course/course.entity';
 import { CourseService } from 'src/course/course.service';
 import { EnrollmentStatus } from 'src/utils/enums/enroll.enum';
@@ -52,6 +52,24 @@ if(!course.isPublished) throw new BadRequestException('Course is not Published Y
                        
 }
 
+
+
+/**
+ * Enroll a student inside an existing database transaction (used when an instructor approves a purchase).
+ * Uses the transaction manager so the enrollment is rolled back together with the purchase update.
+ * @returns true if a new enrollment was created, false if the student was already enrolled
+ */
+async enrollCourseInTransaction(manager:EntityManager,courseId:number,studentId:number):Promise<boolean>{
+if(!courseId||!studentId) throw new BadRequestException();
+const repo=manager.getRepository(EnrollmentEntity);
+const exist=await repo.findOne({where:{course:{id:courseId},user:{id:studentId}}});
+if(exist) return false;
+const course=await this.courseService.getSingleCourse(courseId);
+if(!course) throw new NotFoundException('Course is not existed');
+if(!course.isPublished) throw new BadRequestException('Course is not Published Yet');
+await repo.save(repo.create({course:{id:courseId},user:{id:studentId}}));
+return true;
+}
 
 
 /**

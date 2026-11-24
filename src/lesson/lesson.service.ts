@@ -1,4 +1,4 @@
-import { BadRequestException, forwardRef, Inject, Injectable,
+import { BadRequestException, ForbiddenException, forwardRef, Inject, Injectable,
 NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessonsEntity } from './lessons.entity';
@@ -35,7 +35,7 @@ export class LessonService {
      */
     public async addLesson(dto: CreateLessonDto, insId: number) {
         if (!insId || !dto.title  || !dto.sectionId || !dto.type) throw new BadRequestException('Required Values are not Provided');
-        await this.verifyInstractorPeriorty(dto.sectionId, insId)
+        await this.assertInstractorOwnsSection(dto.sectionId, insId)
         // creation
         const lesson = this.lessonRepo.create({
             ...dto,
@@ -92,7 +92,7 @@ export class LessonService {
             where: { id: lessonId }, relations: { section: true }, select: { section: { id: true } }
         })
         if (!lesson) throw new NotFoundException('Lesson Not Found');
-        await this.verifyInstractorPeriorty(lesson.section.id, insId);
+        await this.assertInstractorOwnsSection(lesson.section.id, insId);
         lesson.title = dto.title ?? lesson.title;
         lesson.description = dto.description ?? lesson.description;
         lesson.order = dto.order ?? lesson.order;
@@ -110,7 +110,7 @@ export class LessonService {
             where: { id: lessonId }, relations: { section: true }, select: { section: { id: true } }
         })
         if (!lesson) throw new NotFoundException('Lesson Not Found');
-        await this.verifyInstractorPeriorty(lesson.section.id, insId);
+        await this.assertInstractorOwnsSection(lesson.section.id, insId);
         return await this.lessonRepo.remove(lesson);
     }
 
@@ -121,7 +121,7 @@ export class LessonService {
             where: { id: lessonId }, relations: { section: true }, select: { section: { id: true } }
         })
         if (!lesson) throw new NotFoundException('Lesson Not Found');
-        await this.verifyInstractorPeriorty(lesson.section.id, insId);
+        await this.assertInstractorOwnsSection(lesson.section.id, insId);
         let resulte: UploadApiResponse;
         switch (lesson.type) {
             case LessonType.VIDEO: {
@@ -150,6 +150,12 @@ export class LessonService {
         return await this.enrollService.verifyStudentEnrollment(userId, courseId);
     }
 
+
+    // throws if the instructor does not own the course of this section
+    public async assertInstractorOwnsSection(sectionId: number, insId: number) {
+        const owns = await this.verifyInstractorPeriorty(sectionId, insId);
+        if (!owns) throw new ForbiddenException('You are not allowed to modify this course');
+    }
 
     // verify if ins is the owner of the course
     public async verifyInstractorPeriorty(sectioId: number, insId: number) {

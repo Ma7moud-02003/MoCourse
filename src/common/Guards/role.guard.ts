@@ -6,8 +6,8 @@ import { PayloadType } from "src/utils/types/paylod.type";
 export class Roleguard implements CanActivate {
     constructor(private ref: Reflector) { }
     async canActivate(context: ExecutionContext) {
-  const roles:UserRoles=this.ref.getAllAndOverride('roles',[context.getHandler(),context.getClass()]);
-  if(roles.length==0) return true;
+  const roles:UserRoles[]|undefined=this.ref.getAllAndOverride('roles',[context.getHandler(),context.getClass()]);
+  if(!roles||roles.length==0) return true;
   const req=context.switchToHttp().getRequest();
   const payload:PayloadType=req['user'];
   if(!payload) throw new BadRequestException();

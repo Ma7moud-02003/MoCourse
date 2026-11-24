@@ -24,7 +24,9 @@ export class UserService {
 
     // register function imortant 
  public async register(dto: RegisterDto) {
-  const { fullName, email, password, role } = dto;
+  const { fullName, email, password } = dto;
+  // public sign-up can never create an admin; only student or instructor
+  const role = dto.role === UserRoles.INSTRACTOR ? UserRoles.INSTRACTOR : UserRoles.STUDENT;
   const userInDatabase = await this.userRepo.findOne({ where: { email }});
   if (userInDatabase) {
     throw new BadRequestException('Email is already used');

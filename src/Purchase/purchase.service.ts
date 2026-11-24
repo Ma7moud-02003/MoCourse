@@ -39,7 +39,7 @@ export class PurchaseService {
  * @throws BadRequestException If the student already owns the course.
  */
     public async buyCourse(studentId: number, courseId: number) {
-        if (!studentId && courseId) throw new NotFoundException('Student Id Or Course Id Is Not Found')
+        if (!studentId || !courseId) throw new NotFoundException('Student Id Or Course Id Is Not Found')
         const course = await this.courseServise.getSingleCourse(courseId);
         if (!course) throw new NotFoundException('Course does not exist');
         const exist = await this.purchaseRepo.findOne({
@@ -54,6 +54,10 @@ export class PurchaseService {
             switch (exist?.status) {
                 case status.PAID:
                     throw new BadRequestException('You alrealdy own this course');
+                case status.WAITING_APPROVAL:
+                    return {
+                        message: 'طلبك قيد المراجعة من المدرس'
+                    }
                 case status.PENDING:
                     return {
                         message: 'اذهب للدفع ثم اضف بيانات الدفع وانتظر التاكيد'
@@ -150,61 +154,57 @@ export class PurchaseService {
 
     public async updatPurchaseStatus(purchaseId: number, status: StatusEnum, insId: number) {
         if (!status || !purchaseId || !insId) throw new BadRequestException('Status or id  have not sended');
-        const purchase = await this.purchaseRepo.findOne({
-            where: {
-                id: purchaseId
-            }, relations: {
-                course: {
-                    Instractor: true
-                },
-                user: true
-            }, select: {
-                course: {
-                    id: true,
-                    title:true,
-                    Instractor: {
-                        id: true
-                    }
-                }, user: {
-                    id: true
-                }
-            }
-        })
-        if (!purchase) throw new NotFoundException('Not Found');
-        if (purchase?.course.Instractor.id != insId) throw new UnauthorizedException('You Can Not Access That');
-        purchase.status = status ?? purchase.status;
-        let title=``;
-        let message=``;
-        await this.purchaseRepo.save(purchase);
-        switch (status) {
-            case StatusEnum.FAILED: {
-             title=`تحديث جديد`;
-             message =`تم رفض  طلب اشتراكك في كورس ${purchase.course.title} الرجاء التواصل مع صاحب الكورس `
-             return {message:'تم التحديث بنجاح'}
-            };
-            case StatusEnum.PAID: {
-             
-    
-                 title=`تحديث جديد`;
-                message =`تم قبول  طلب اشتراكك في كورس ${purchase.course.title} يمكنك الان  البدء في الكورس`
-       
-                return {
-                    message: 'Purchase Updated Successfully & Student emrollmented successfully'
-                }
-            }
+        // the instructor can only accept or reject a purchase
+        if (status !== StatusEnum.PAID && status !== StatusEnum.FAILED) {
+            throw new BadRequestException('Status must be PAID or FAILED');
         }
-         //creating notification for student
-         await this.purchaseRepo.save(purchase);
-         const courseId=purchase.course.id; const courseTitle=purchase.course.title; const user_id=purchase.user.id
-        await this.notifiService.creatNotification(
-        courseId,user_id,
-        title,
-        message,
-        NotificationType.PURCHASE
-        )
-  
-     await this.enrollService.enrollCourse(purchase.course.id, purchase.user.id);
+        // Everything that changes data runs in ONE transaction: if enrolling or saving the status fails,
+        // both are rolled back (no unpaid enrollment, no PAID purchase without access).
+        const info = await this.purchaseRepo.manager.transaction(async (manager) => {
+            const repo = manager.getRepository(PurchaseEntity);
+            // lock the purchase row so two simultaneous approvals run one after the other
+            const locked = await repo.findOne({ where: { id: purchaseId }, lock: { mode: 'pessimistic_write' } });
+            if (!locked) throw new NotFoundException('Not Found');
+            const purchase = await repo.findOne({
+                where: { id: purchaseId },
+                relations: { course: { Instractor: true }, user: true },
+                select: {
+                    course: { id: true, title: true, Instractor: { id: true } },
+                    user: { id: true }
+                }
+            });
+            if (!purchase) throw new NotFoundException('Not Found');
+            if (purchase.course.Instractor.id != insId) throw new UnauthorizedException('You Can Not Access That');
+            // only a purchase that the student submitted proof for can be reviewed (checked after the lock)
+            if (locked.status !== StatusEnum.WAITING_APPROVAL) {
+                throw new BadRequestException('Only purchases waiting for approval can be updated');
+            }
+            const courseId = purchase.course.id;
+            const studentId = purchase.user.id;
+            if (status === StatusEnum.PAID) {
+                await this.enrollService.enrollCourseInTransaction(manager, courseId, studentId);
+            }
+            await repo.update(purchaseId, { status });
+            return { courseId, studentId, courseTitle: purchase.course.title };
+        });
 
+        // notifications run after the commit; a notification problem must not undo the decision
+        const paid = status === StatusEnum.PAID;
+        try {
+            await this.notifiService.creatNotification(
+                info.courseId, info.studentId,
+                `تحديث جديد`,
+                paid
+                    ? `تم قبول  طلب اشتراكك في كورس ${info.courseTitle} يمكنك الان  البدء في الكورس`
+                    : `تم رفض  طلب اشتراكك في كورس ${info.courseTitle} الرجاء التواصل مع صاحب الكورس `,
+                NotificationType.PURCHASE
+            );
+        } catch (e) {
+            console.error('notification failed after purchase update', e);
+        }
+        return paid
+            ? { message: 'Purchase Updated Successfully & Student emrollmented successfully' }
+            : { message: 'تم التحديث بنجاح' };
     }
 
 
