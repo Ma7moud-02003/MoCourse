@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { QuestionService } from './question.service';
 
 function build() {
@@ -46,8 +47,8 @@ describe('QuestionService.updateQuestion', () => {
 
   it('keeps text and order when omitted', async () => {
     const { service } = build();
-    const res: any = await service.updateQuestion(3, 1, { choices: [{ id: 101 }] } as any);
-    expect(res.choices[0]).toMatchObject({ text: 'B', order: 2 });
+    const res: any = await service.updateQuestion(3, 1, { choices: [{ id: 100 }, { id: 101 }] } as any);
+    expect(res.choices[1]).toMatchObject({ text: 'B', order: 2 });
   });
 
   it('rejects another instructor', async () => {
@@ -68,5 +69,54 @@ describe('totalMarks follows the question marks', () => {
     const { service, manager } = build();
     await service.updateQuestion(3, 1, { question: 'new text' } as any);
     expect(manager.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('choice rules on update', () => {
+  it('rejects removing the only correct choice', async () => {
+    const { service, manager } = build();
+    await expect(service.updateQuestion(3, 1, { choices: [{ id: 100, isCorrect: false }, { id: 101 }] } as any)).rejects.toBeInstanceOf(BadRequestException);
+    expect(manager.save).not.toHaveBeenCalled();
+  });
+
+  it('rejects two correct choices', async () => {
+    const { service } = build();
+    await expect(service.updateQuestion(3, 1, { choices: [{ id: 100 }, { id: 101, isCorrect: true }] } as any)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects dropping to one choice and removes nothing', async () => {
+    const { service, manager } = build();
+    await expect(service.updateQuestion(3, 1, { choices: [{ id: 100 }] } as any)).rejects.toBeInstanceOf(BadRequestException);
+    expect(manager.remove).not.toHaveBeenCalled();
+  });
+
+  it('rejects more than 6 choices on an mcq', async () => {
+    const { service } = build();
+    const many = [{ id: 100 }, { id: 101 }, ...[1, 2, 3, 4, 5].map((n) => ({ text: 'x' + n, order: n + 2, isCorrect: false }))];
+    await expect(service.updateQuestion(3, 1, { choices: many } as any)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('accepts adding a new wrong choice (3 choices, one correct)', async () => {
+    const { service } = build();
+    const res: any = await service.updateQuestion(3, 1, { choices: [{ id: 100 }, { id: 101 }, { text: 'C', order: 3, isCorrect: false }] } as any);
+    expect(res.choices).toHaveLength(3);
+  });
+
+  it('accepts changing type to true_false when the 2 choices fit', async () => {
+    const { service } = build();
+    const res: any = await service.updateQuestion(3, 1, { type: 'true_false' } as any);
+    expect(res.type).toBe('true_false');
+  });
+
+  it('rejects changing type to true_false when it has 3 choices', async () => {
+    const { service, existing } = build();
+    existing.choices.push({ id: 102, text: 'C', order: 3, isCorrect: false });
+    await expect(service.updateQuestion(3, 1, { type: 'true_false' } as any)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('a mark-only edit does not re-check the choices', async () => {
+    const { service, existing } = build();
+    existing.choices.forEach((c: any) => (c.isCorrect = false)); // old bad data
+    await expect(service.updateQuestion(3, 1, { mark: 4 } as any)).resolves.toBeDefined();
   });
 });
