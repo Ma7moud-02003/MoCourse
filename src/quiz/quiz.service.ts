@@ -45,7 +45,7 @@ export class QuizService {
       shuffleQuestions: dto.shuffleQuestions,
       shuffleChoices: dto.shuffleChoices,
       showResultImmediately: dto.showResultImmediately,
-      isPublished: dto.isPublished,
+      isPublished: false,
       totalMarks: dto.totalMarks,
       quizTarget: dto.quizTarget,
       course:{ id:dto.courseId},
@@ -57,6 +57,7 @@ export class QuizService {
         course = await this.courseService.getCourseDetails(dto.courseId);
         const ownsCourse = await this.courseService.verifyingInstractorOwnTheCourse(insId, dto.courseId);
         if (!ownsCourse) throw new ForbiddenException('You do not own this course');
+        if (dto.isPublished) {throw new BadRequestException('A new exam starts as a draft. Add questions first, then publish it.');}
         if (dto.sectionId || dto.lessonId) {throw new BadRequestException('Course quiz cannot have sectionId or lessonId');}
         quiz = this.quizRepo.create({
           ...quizData
@@ -123,6 +124,12 @@ export class QuizService {
   }
 
   if (dto.isPublished !== undefined) {
+    if (dto.isPublished && !quiz.isPublished) {
+      const questionsCount = await this.questionRepo.count({ where: { quiz: { id: quizId } } });
+      if (questionsCount === 0) {
+        throw new BadRequestException('Add at least one question before publishing the exam');
+      }
+    }
     quiz.isPublished = dto.isPublished;
   }
 
