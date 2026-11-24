@@ -21,6 +21,7 @@ export class UpdateQuizDto {
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(100)
   passMark?: number;
 
   @IsOptional()
@@ -48,11 +49,6 @@ export class UpdateQuizDto {
   @IsOptional()
   @IsBoolean()
   isPublished?: boolean;
-
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  totalMarks?: number;
 
   @IsOptional()
   @IsString()
