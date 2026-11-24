@@ -1,0 +1,94 @@
+POST http://localhost:3000/api/question/
+Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3OTA1MzExODgsImV4cCI6MTc5MDUzNDc4OH0.mWeXzuzmIOuNUVcbJH9IK9MPmWb_qDLyjY4gq2auPCk
+Content-Type: application/json
+
+{
+  "quizId": 3,
+  "questions": [
+    {
+      "question": "What is Angular?",
+      "type": "mcq",
+      "mark": 2,
+      "order": 1,
+      "choices": [
+        {
+          "text": "A JavaScript framework",
+          "isCorrect": true,
+          "order": 1
+        },
+        {
+          "text": "A database",
+          "isCorrect": false,
+          "order": 2
+        },
+        {
+          "text": "An operating system",
+          "isCorrect": false,
+          "order": 3
+        },
+        {
+          "text": "A programming language",
+          "isCorrect": false,
+          "order": 4
+        }
+      ]
+    },
+    {
+      "question": "Which language is mainly used with Angular?",
+      "type": "mcq",
+      "mark": 2,
+      "order": 2,
+      "choices": [
+        {
+          "text": "Python",
+          "isCorrect": false,
+          "order": 1
+        },
+        {
+          "text": "TypeScript",
+          "isCorrect": true,
+          "order": 2
+        },
+        {
+          "text": "Java",
+          "isCorrect": false,
+          "order": 3
+        },
+        {
+          "text": "C++",
+          "isCorrect": false,
+          "order": 4
+        }
+      ]
+    },
+    {
+      "question": "Which directive is used to conditionally display content in modern Angular?",
+      "type": "mcq",
+      "mark": 1,
+      "order": 3,
+      "choices": [
+        {
+          "text": "@if",
+          "isCorrect": true,
+          "order": 1
+        },
+        {
+          "text": "@loop",
+          "isCorrect": false,
+          "order": 2
+        },
+        {
+          "text": "@condition",
+          "isCorrect": false,
+          "order": 3
+        },
+        {
+          "text": "@show",
+          "isCorrect": false,
+          "order": 4
+        }
+      ]
+    }
+  ]
+}
+ 

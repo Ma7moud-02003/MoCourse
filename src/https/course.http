@@ -1,11 +1,17 @@
 ### get all courses
-GET  http://localhost:3000/api/course/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Niwicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODUwMTA4NDEsImV4cCI6MTc4NTAxNDQ0MX0.wspAV6lflqdgjCAjfKQMNXA-oJ4cRxwT_Sc5h7W3hBQ
-
-### get my courses as instractor
+GET  http://localhost:3000/api/course?categoryId=1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Niwicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODYxMjc3NjMsImV4cCI6MTc4NjEzMTM2M30.86RgvYzQg80yOuT1XXCqsXAHHFiZc4_SQUZMVqE8pbA
+### get student courses
 GET  http://localhost:3000/api/course/myCourses
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODUyMzIyMzMsImV4cCI6MTc4NTIzNTgzM30.2SsI53Ptx-1XULTIuzKjXco89WCKZZT2E4UewwQThI0
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Nywicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODg1NjA3ODYsImV4cCI6MTc4ODU2NDM4Nn0.2o9VOsTOntEsrs94HhXvwOmTUJ75saTFTJIMvVQ73AA
 
+### get instractor courses 
+GET  http://localhost:3000/api/course/ins/myCourses
+Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3OTA4NDMyODAsImV4cCI6MTc5MDg3OTI4MH0.SQzfbosSW0yh_lPOTcks1ieCLIB8hcQdsulwoSCFD4o
+### details course
+
+GET  http://localhost:3000/api/course/details/5
+Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3OTA4NDMyODAsImV4cCI6MTc5MDg3OTI4MH0.SQzfbosSW0yh_lPOTcks1ieCLIB8hcQdsulwoSCFD4o
 ### enroll course for student
 POST   http://localhost:3000/api/enrollment/5
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Niwicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODUwMTQ1MjcsImV4cCI6MTc4NTAxODEyN30.Hx_avy14JibjxlzaIb8F8tZdfXVo8ZJhX1vfrjuBHDk
@@ -36,7 +42,8 @@ Content-Type: application/json
     "duration": 80
     
 }
+ 
 
 ### delete course 
 DELETE    http://localhost:3000/api/course/delete/5
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzg1MjM2Njk1LCJleHAiOjE3ODUyNDAyOTV9.hInhHKuym1RhwvuaOBtlLqI2LgNuFM0duYJqL8lWuF4
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODYyMTAyMjEsImV4cCI6MTc4NjIxMzgyMX0.EOLrFo7-y_QpbmDI7nwnOzn4imqhdxZnkkkLLZ8_slY

@@ -1,12 +1,12 @@
 ### add new category
 Post http://localhost:3000/api/category
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzg0NjYwNDg5LCJleHAiOjE3ODQ2NjQwODl9.Jc8_7jAO73-TzHQDEvjMXuqZsDLdzSxlbf39WGSuvkU
-Content-Type:application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzg2NTQ5ODg5LCJleHAiOjE3ODY1NTM0ODl9.lltxTmaV9vyUF8V_WRCSUh4WcKttCOEQ65hntAo92go
+Content-Type: application/json
 
 {
-"name":"Marketing"
+"name":"مواد علميه"
 }
 
 ### Get All Categorise
 GET  http://localhost:3000/api/category/all
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Miwicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODQ5ODE5MDQsImV4cCI6MTc4NDk4NTUwNH0.vx_-XKWyEuCdbH27Sob5-0GKdHQ6x4SG_DG-7UOX_nk
+Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODY1NDgxOTUsImV4cCI6MTc4NjU1MTc5NX0.a03UaBo5rJFNreOWYJBasjitA122sy1-7AFAsM0jeY4

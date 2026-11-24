@@ -1,4 +1,5 @@
-import { IsArray, IsBoolean, IsOptional, IsNumber, IsString, Length, Min,Max } from "class-validator";
+import { Type } from "class-transformer/types/decorators/type.decorator";
+import { IsArray, IsBoolean, IsOptional, IsNumber, IsString, Length, Min,Max, IsNotEmpty } from "class-validator";
 import { CourseLevel } from "src/utils/enums/level.enum";
 
 export class UpdateCouurseDto{
@@ -7,6 +8,12 @@ export class UpdateCouurseDto{
     @IsString()
     @Length(5,150)
     title!:string;
+
+
+    
+    @IsArray()
+     @IsOptional()
+    requirements!: string[];
 
     @IsOptional()
     @IsString()
@@ -17,12 +24,14 @@ export class UpdateCouurseDto{
     @IsNumber()
     @Min(100)
     @Max(10000)
+    @Type(()=>Number)
     price!:number;
 
     @IsOptional()
     @IsNumber()
     @Min(5)
     @Max(1000)
+    @Type(()=>Number)
     duration!:number;
     
     @IsOptional()
@@ -34,10 +43,12 @@ export class UpdateCouurseDto{
     @Max(10000)
     @IsOptional()
     @IsNumber()
+    @Type(()=>Number)
     discountPrice!:number
 
     @IsOptional()
     @IsBoolean()
+      @Type(()=>Boolean)
     isPublished!:boolean
 
     @IsOptional()
@@ -45,6 +56,7 @@ export class UpdateCouurseDto{
 
     @IsOptional()
     @IsNumber()
+    @Type(()=>Number)
     categoryId!:number
    
     

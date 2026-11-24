@@ -7,11 +7,13 @@ import { PurchaseService } from './purchase.service';
 import { CourseModule } from 'src/course/course.module';
 import { EnrollmentModule } from 'src/enrollment/enrollment.module';
 import { CloudinaryModule } from 'src/common/cloudinary/cloudinary.module';
+import { NotificationsModule } from 'src/notifications/notifications.module';
 
 @Module({
   controllers: [PurchaseController],
   providers: [PurchaseService],
-    imports:[TypeOrmModule.forFeature([PurchaseEntity]),CommonModule,CourseModule,EnrollmentModule,CloudinaryModule]
+    imports:[TypeOrmModule.forFeature([PurchaseEntity]),CommonModule,CourseModule,EnrollmentModule,CloudinaryModule,NotificationsModule],
+    exports:[PurchaseService]
   
 })
 export class PurchaseMoule {}

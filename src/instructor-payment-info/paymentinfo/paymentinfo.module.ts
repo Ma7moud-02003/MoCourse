@@ -8,6 +8,7 @@ import { CommonModule } from 'src/common/common.module';
 @Module({
   imports:[TypeOrmModule.forFeature([PaymentInfoEntity]),CommonModule],
   controllers: [PaymentinfoController],
-  providers: [PaymentinfoService]
+  providers: [PaymentinfoService],
+  exports:[PaymentinfoService]
 })
 export class PaymentinfoModule {}

@@ -1,0 +1,27 @@
+### creat new comment 
+POST   http://localhost:3000/api/review/add/5
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Nywicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODYxODQ3NTQsImV4cCI6MTc4NjE4ODM1NH0.mEKMc_TwV2CbgN6XrAJSLxMje5fAXu3yyj4NDXbI0-M
+Content-Type:application/json
+
+{
+"comment":"Wonderfull Course Wow",
+"rateing":5
+}
+
+### if student hs comment 
+Get   http://localhost:3000/api/review/isStudentHasComment/5
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Nywicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODYxODQ3NTQsImV4cCI6MTc4NjE4ODM1NH0.mEKMc_TwV2CbgN6XrAJSLxMje5fAXu3yyj4NDXbI0-M
+
+### Update comment 
+### creat new comment 
+PATCH    http://localhost:3000/api/review/update/5/1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODYxODQ2MTcsImV4cCI6MTc4NjE4ODIxN30.VB18sX7T3r5frMNkb7cqSMqHiU-ark440oVtu7aavow
+Content-Type:application/json
+
+{
+"rateing":4
+}
+### delete comment by student 
+DELETE    http://localhost:3000/api/review/delete/5/2
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODYxODQ5NzUsImV4cCI6MTc4NjE4ODU3NX0.axlEAf8uBBcyaQW75IT5L3wHmrxN8mWkmhglMgyqgXw
+

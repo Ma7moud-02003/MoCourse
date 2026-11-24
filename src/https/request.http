@@ -2,9 +2,9 @@ Post http://localhost:3000/api/user/auth/register
 Content-Type:application/json
 
 {
-"fullName":"Soma Amr",
-"email":"Soma123@gmail.com",
-"password":"Soma123",
+"fullName":"Yousef Amr",
+"email":"Yousef123@gmail.com",
+"password":"Yousef123",
 "role":"student"
 }
 
@@ -32,12 +32,13 @@ Post http://localhost:3000/api/user/auth/login
 Content-Type:application/json
 
 {
-"email":"Soma123@gmail.com",
-"password":"Soma123"
+    
+"email":"Yousef123@gmail.com",
+"password":"Yousef123"
 }
 ### Get  Current user
 GET  http://localhost:3000/api/user/currentUser
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzg1MDY1NDgzLCJleHAiOjE3ODUwNjkwODN9.ImC4tSJZ1xnHruk-DnL-lH8sYdAntIFqeKLfa7c_OSE
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3OTA4ODQzODAsImV4cCI6MTc5MDkyMDM4MH0.5Yw-7oiAWkStqtiPmF3LtE1lzHvXRQ5Hiyq_KeegJeM
 
 ### Get All
 GET   http://localhost:3000/api/user/all_users
@@ -51,3 +52,8 @@ Content-Type:application/json
 {
 "fullName": "محمود عمرو"
 }
+
+### Get  Current Role
+GET  http://localhost:3000/api/user/role
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODU1MTM1MDIsImV4cCI6MTc4NTUxNzEwMn0.Xj5QwBEk6a7kMkoVrhY3ati17TqPbuIyrSz9sxh0lxs
+

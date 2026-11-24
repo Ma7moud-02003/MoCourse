@@ -1,10 +1,9 @@
-import { CategoryEntity } from "src/category/category.entity";
+
 import { CourseEntity } from "src/course/course.entity";
 import { LessonsEntity } from "src/lesson/lessons.entity";
-import { UserEntity } from "src/User/user.entity";
+import { QuizEntity } from "src/quiz/quiz.entity";
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
-import { UserRoles } from "src/utils/enums/userRole.enum";
-import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
 
 @Entity({name:'sections'})
 export class SectionEntity{
@@ -16,7 +15,7 @@ export class SectionEntity{
 
  
   @Column()
-    order!:number;
+  order!:number;
 
  
 
@@ -32,8 +31,12 @@ export class SectionEntity{
     course!:CourseEntity
    
     
-    @OneToMany(()=>LessonsEntity,(lesson)=>lesson.section)
+    @OneToMany(()=>LessonsEntity,(lesson)=>lesson.section,{onDelete:'CASCADE'})
     lessons!:LessonsEntity[]
+
+    
+    @OneToMany(()=>QuizEntity,(quiz)=>quiz.section,{onDelete:'CASCADE'})
+   quizzes!:QuizEntity[]
 
 
 }

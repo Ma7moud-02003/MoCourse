@@ -22,16 +22,32 @@ import { PurchaseMoule } from './Purchase/purchase.module';
 import { PurchaseEntity } from './Purchase/purchase.entity';
 import { PaymentinfoModule } from './instructor-payment-info/paymentinfo/paymentinfo.module';
 import { PaymentInfoEntity } from './instructor-payment-info/paymentInfo.entity';
+import { QuestionModule } from './question/question.module';
+import { ChoiceModule } from './choice/choice.module';
+import { QuizAttemptModule } from './quiz-attempt/quiz-attempt.module';
+import { StudentAnswerModule } from './student-answer/student-answer.module';
+import { QuestionEntity } from './question/question.entity';
+import { QuizAttemptEntity } from './quiz-attempt/quiz-attemp.entity';
+import { StudentAnswerEntity } from './student-answer/student_answer.entity';
+import { ChoiceEntity } from './choice/choise.entity';
+import { QuizEntity } from './quiz/quiz.entity';
+import { QuizModule } from './quiz/quiz.module';
+import { ReviewModule } from './review/review.module';
+import { ReviewEntity } from './review/review.enity';
+import { DashboaredModule } from './dashboared/dashboared.module';
+import { CertificateModule } from './certificate/certificate.module';
+import { CertificateEntity } from './certificate/certificate.entity';
+import { NotificationsModule } from './notifications/notifications.module';
+import { NotificationEntity } from './notifications/notification.entity';
 
 
 
 @Module({
   imports: [
-
-   ConfigModule.forRoot({
-      isGlobal: true,
-     envFilePath: `.env.${process.env.NODE_ENV}`
-    }),
+  ConfigModule.forRoot({
+    isGlobal:true,
+    envFilePath:`.env.${process.env.NODE_ENV}`
+  }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
@@ -43,12 +59,25 @@ import { PaymentInfoEntity } from './instructor-payment-info/paymentInfo.entity'
           type: 'postgres',
           host: 'localhost',
           synchronize: process.env.NODE_ENV !=='production',
-          entities: [UserEntity,CourseEntity,CategoryEntity,SectionEntity,LessonsEntity,EnrollmentEntity,ProgressEntity,PurchaseEntity,PaymentInfoEntity]
+          entities: [UserEntity,CourseEntity,CategoryEntity,SectionEntity,LessonsEntity,
+            EnrollmentEntity,ProgressEntity,PurchaseEntity,PaymentInfoEntity,CertificateEntity,
+             // quize enties
+          QuestionEntity,QuizEntity,QuizAttemptEntity,StudentAnswerEntity,ChoiceEntity,ReviewEntity,NotificationEntity
+          ]
         }
       }
     }),
      
-    UserModule, CategoryModule, CourseModule, SectionModule, LessonModule, EnrollmentModule, ProgressModule,PurchaseMoule, PaymentinfoModule],
+    UserModule, CategoryModule, CourseModule, SectionModule, LessonModule,
+     EnrollmentModule, ProgressModule,PurchaseMoule,
+     PaymentinfoModule,DashboaredModule,
+      QuizModule,
+       QuestionModule, 
+     ChoiceModule,
+      QuizAttemptModule, 
+      StudentAnswerModule, ReviewModule, DashboaredModule, CertificateModule, NotificationsModule,
+     
+    ],
   controllers: [AppController],
   providers: [AppService,
     {

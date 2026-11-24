@@ -8,19 +8,19 @@ import { Roleguard } from 'src/common/Guards/role.guard';
 
 @Controller('api/category/')
 export class CategoryController {
-constructor(private catService:CategoryService){}
+    constructor(private catService: CategoryService) { }
 
     @Post('')
     @Roles(UserRoles.ADMIN)
-    @UseGuards(AuthGuard,Roleguard)
-    addCatog(@Body() cat:CategoryDto){
-    return this.catService.creatCat(cat);
+    @UseGuards(AuthGuard, Roleguard)
+    addCatog(@Body() cat: CategoryDto) {
+        return this.catService.creatCat(cat);
     }
-  
+
     @Get('all')
-    @Roles(UserRoles.ADMIN,UserRoles.INSTRACTOR)
-    @UseGuards(AuthGuard,Roleguard)
-    getAll(){
+    @Roles(UserRoles.ADMIN, UserRoles.INSTRACTOR)
+    @UseGuards(AuthGuard, Roleguard)
+    getAll() {
         return this.catService.getAllCatogs();
     }
 }

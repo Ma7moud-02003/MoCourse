@@ -8,17 +8,17 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
 
 @Module({
     imports:[
-        JwtModule.registerAsync({
-            inject:[ConfigService],
-            useFactory(config:ConfigService) {
-                return{
-                    global:true,
-secret:config.get<string>('JWT_SECRETKEY'),
-signOptions:{expiresIn:config.get<number>('JWT_EXPIREDIN')}
 
-                }
-            },
-        }),
+    JwtModule.registerAsync({
+        inject:[ConfigService],
+        useFactory:(config:ConfigService)=>{
+return{
+    global:true,
+    secret:config.get<string>('JWT_SECRETKEY'),
+    signOptions:{expiresIn:config.get<number>('JWT_EXPIREDIN')}
+}
+        }
+    }),
         CloudinaryModule
     ],
     providers:[AuthGuard,Roleguard],

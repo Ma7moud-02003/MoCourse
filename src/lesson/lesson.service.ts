@@ -1,4 +1,203 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable,
+NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { LessonsEntity } from './lessons.entity';
+import { Repository } from 'typeorm';
+import { CreateLessonDto } from './dtos/lessin.dto';
+import { SectionService } from 'src/section/section.service';
+import { CourseService } from 'src/course/course.service';
+import { UpdateLessonDto } from './dtos/updateLesson.dto';
+import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
+import { LessonType } from 'src/utils/enums/lessonType.enum';
+import { UploadApiResponse } from 'cloudinary';
+import { EnrollmentService } from 'src/enrollment/enrollment.service';
+
 
 @Injectable()
-export class LessonService {}
+export class LessonService {
+    constructor(
+        @InjectRepository(LessonsEntity)
+        private lessonRepo: Repository<LessonsEntity>,
+        private sectionService: SectionService,
+        @Inject(forwardRef(() => CourseService))
+        private courseService: CourseService,
+        private cloudinaryService: CloudinaryService,
+        private enrollService: EnrollmentService,
+
+
+    ) { }
+
+    /**
+     * add new lesson
+     * @param dto 
+     * @param insId 
+     * @returns 
+     */
+    public async addLesson(dto: CreateLessonDto, insId: number) {
+        if (!insId || !dto.title  || !dto.sectionId || !dto.type) throw new BadRequestException('Required Values are not Provided');
+        await this.verifyInstractorPeriorty(dto.sectionId, insId)
+        // creation
+        const lesson = this.lessonRepo.create({
+            ...dto,
+            section: { id: dto.sectionId }
+        })
+        return await this.lessonRepo.save(lesson);
+
+    }
+
+
+    public async getLesson(lessonId: number, userId: number) {
+        if (!lessonId || !userId) throw new BadRequestException();
+        const lesson = await this.lessonRepo.findOne({
+            where: { id: lessonId }, relations: { section: true }, select: { section: { id: true } }
+        });
+        if(lesson?.isPreview) return lesson;
+        if (!lesson) throw new NotFoundException('Lesson Not Found');
+        const sectionId = lesson?.section.id;
+        if (!sectionId) throw new BadRequestException('No Section Is Found To This Lesson');
+        const isUserOwnTheCourse = await this.verifyInstractorPeriorty(sectionId, userId);
+        if (isUserOwnTheCourse) return await this.lessonRepo.findOne({ where: { id: lessonId } });
+        const section = await this.sectionService.getSection(sectionId);
+        const courseId = section?.course.id;
+        if (!courseId) throw new BadRequestException();
+        const verifyed = await this.verifyStudentEnrollment(userId, courseId);
+        if (verifyed) return lesson;
+        if (lesson?.isPreview) return lesson;
+        const enroll = await this.verifyStudentEnrollment(userId, courseId);
+        if (!enroll) throw new UnauthorizedException('You need to purchase this course');
+        return lesson;
+    }
+
+
+    public async getSectiionLessons(sectionId: number, userId: number) {
+        if (!sectionId || !userId) throw new BadRequestException();
+        const vrified = await this.verifyInstractorPeriorty(sectionId, userId);
+        if (vrified) {
+            return await this.lessonRepo.find({
+            where: { section: { id: sectionId } },
+            order: { order: 'ASC' }
+        }); 
+        }
+        return await this.lessonRepo.find({
+            where: { section: { id: sectionId } },
+            select: { id: true, isPreview: true, order: true, title: true, duration: true }
+            , order: { order: 'ASC' }
+        });
+    }
+
+
+    async updateLessone(lessonId: number, dto: UpdateLessonDto, insId: number) {
+        if (!lessonId) throw new BadRequestException();
+        const lesson = await this.lessonRepo.findOne({
+            where: { id: lessonId }, relations: { section: true }, select: { section: { id: true } }
+        })
+        if (!lesson) throw new NotFoundException('Lesson Not Found');
+        await this.verifyInstractorPeriorty(lesson.section.id, insId);
+        lesson.title = dto.title ?? lesson.title;
+        lesson.description = dto.description ?? lesson.description;
+        lesson.order = dto.order ?? lesson.order;
+        lesson.type = dto.type ?? lesson.type;
+        lesson.content = dto.content ?? lesson.content;
+        lesson.isPreview = dto.isPreview ?? lesson.isPreview;
+        return await this.lessonRepo.save(lesson);
+
+    }
+
+
+     async deleteLesson(lessonId: number, insId: number) {
+        if (!lessonId || !insId) throw new BadRequestException('Required values are not provided');
+        const lesson = await this.lessonRepo.findOne({
+            where: { id: lessonId }, relations: { section: true }, select: { section: { id: true } }
+        })
+        if (!lesson) throw new NotFoundException('Lesson Not Found');
+        await this.verifyInstractorPeriorty(lesson.section.id, insId);
+        return await this.lessonRepo.remove(lesson);
+    }
+
+    // uploade Part 
+    async updateLesson_Upload(file: Express.Multer.File, lessonId: number, insId: number) {
+        if (!file || !lessonId || !insId) throw new BadRequestException('Required values are not provided');
+        const lesson = await this.lessonRepo.findOne({
+            where: { id: lessonId }, relations: { section: true }, select: { section: { id: true } }
+        })
+        if (!lesson) throw new NotFoundException('Lesson Not Found');
+        await this.verifyInstractorPeriorty(lesson.section.id, insId);
+        let resulte: UploadApiResponse;
+        switch (lesson.type) {
+            case LessonType.VIDEO: {
+                if (!file.mimetype.startsWith('video/')) throw new BadRequestException('This lessen type acccept only Vido')
+                resulte = await this.cloudinaryService.uploadFile(file, 'course/vidoes', 'video');
+                lesson.videoUrl = resulte.secure_url;
+                lesson.videoPublicId = resulte.public_id;
+                lesson.duration = Math.round(resulte.duration)
+                break
+            }
+            case LessonType.PDF: {
+                if (file.mimetype !== 'application/pdf') throw new BadRequestException('This lessen type acccept only Pdf')
+                resulte = await this.cloudinaryService.uploadFile(file, 'course/pdfs', 'raw');
+                lesson.pdfUrl = resulte.secure_url;
+                lesson.pdfPublicId = resulte.public_id;
+                break;
+            }
+            default: throw new BadRequestException('This lesson does not support file upload');
+        }
+        return await this.lessonRepo.save(lesson);
+
+    }
+
+    // verify if student enrolls the course 
+    public async verifyStudentEnrollment(userId: number, courseId: number) {
+        return await this.enrollService.verifyStudentEnrollment(userId, courseId);
+    }
+
+
+    // verify if ins is the owner of the course
+    public async verifyInstractorPeriorty(sectioId: number, insId: number) {
+        const section = await this.sectionService.getSection(sectioId);
+        if (!section) throw new BadRequestException('No section Provided');
+        const courseId = section.course.id;
+        console.log(courseId);
+
+        const course = await this.courseService.getSingleCourse(courseId);
+        if (!course) throw new BadRequestException('Course is not found');
+        return course.Instractor.id === insId;
+    }
+
+    // get section id for lesson by id  no route handler just in development
+    public async getLessonSectionId(lessonId: number) {
+        const lesson = await this.lessonRepo.findOne({
+            where: { id: lessonId }, relations: { section: true }, select: { section: { id: true } }
+        })
+        return lesson?.section.id;
+    }
+
+    public async getLessonForDeveopment(lessonId: number) {
+        return await this.lessonRepo.findOne({
+            where: { id: lessonId }, relations: { section: true }, select: { section: { id: true } }
+        })
+    }
+
+    
+
+    // return lessons count 
+    public async getLessonsCout(courseId: number) {
+        return await this.lessonRepo.count({
+            where: {
+                section: {
+                    course: {
+                        id: courseId
+                    }
+                }
+            }
+        })
+    }
+
+
+    public async getCourseByLessonId(lessonId:number){
+const lesson=await this.lessonRepo.findOne({
+    where:{id:lessonId},relations:{section:{course:{Instractor:true}}}
+})
+return lesson?.section.course;
+    }
+
+}

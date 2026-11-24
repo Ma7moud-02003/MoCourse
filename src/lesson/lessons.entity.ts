@@ -1,5 +1,6 @@
 import { CategoryEntity } from "src/category/category.entity";
 import { ProgressEntity } from "src/progress/progress.entity";
+import { QuizEntity } from "src/quiz/quiz.entity";
 import { SectionEntity } from "src/section/section.entity";
 import { UserEntity } from "src/User/user.entity";
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
@@ -14,6 +15,9 @@ export class LessonsEntity{
     @Column({length:100})
     title!:string;
 
+    @Column({ nullable: true })
+     description!: string;
+
     @Column({type:'enum',enum:LessonType,default:LessonType.PDF})
     type!:LessonType;
 
@@ -24,16 +28,25 @@ export class LessonsEntity{
     @Column({nullable:true})
     pdfUrl!:string;
 
+    @Column({ nullable: true })
+videoPublicId!: string;
+
+@Column({ nullable: true })
+pdfPublicId!: string;
+
      @Column({nullable:true})
      content!:string;
       
     @Column({nullable:true})
-     duration!:string;
-    
+     duration!:number; // seconds
+     
       @Column()
      order!:number;
+
+     @Column({ nullable: true })
+     fileSize!: number;
    
-     @Column({type:'boolean'})
+     @Column({type:'boolean',default:true})
      isPreview!:boolean;
 
      
@@ -53,8 +66,11 @@ export class LessonsEntity{
     section!:SectionEntity
 
        
-    @OneToMany(()=>ProgressEntity,(progress)=>progress.lesson)
+    @OneToMany(()=>ProgressEntity,(progress)=>progress.lesson,{onDelete:'CASCADE'})
     progress!:ProgressEntity[]
     
+    
+    @OneToMany(()=>QuizEntity,(quiz)=>quiz.lesson,{onDelete:'CASCADE'})
+    quizzes!:QuizEntity[]
     
 }

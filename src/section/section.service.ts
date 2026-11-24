@@ -1,17 +1,20 @@
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { SectionEntity } from './section.entity';
 import { Repository } from 'typeorm';
 import { SectionDto } from './dtos/section.dto';
 import { CourseService } from 'src/course/course.service';
 import { UpdateSectionDto } from './dtos/update.dto';
+import { EnrollmentService } from 'src/enrollment/enrollment.service';
 
 @Injectable()
 export class SectionService {
   constructor(
       @InjectRepository(SectionEntity)
     private sectinRepo: Repository<SectionEntity>,
-    private courseService:CourseService
+    private courseService:CourseService,
+     @Inject(forwardRef(() => EnrollmentService))
+           private readonly enrollService: EnrollmentService
   ){}
 
 /**
@@ -20,7 +23,9 @@ export class SectionService {
  * @returns successfull added section message 
  */
   public async  addSection(dto:SectionDto,InsId:number){
-    if(!dto.title||!dto.order||!dto.courseId) throw new NotFoundException('Required Value Not found');
+   if (!dto.title || dto.order == null || dto.courseId == null) {
+    throw new BadRequestException('Required Value Not Found');
+}
     const course=await this.courseService.getSingleCourse(dto.courseId);
     if(!course) throw new NotFoundException('Course Is Not Found')
     if(course.Instractor.id!==InsId) throw new UnauthorizedException('You are not allowed to access this course')
@@ -29,42 +34,45 @@ export class SectionService {
       order:dto.order,
       course:{id:dto.courseId}
     })
-    await this.sectinRepo.save(section);
-    return {
-      mesaage:'Section Added Successfully'
-    }
+  return await this.sectinRepo.save(section);
+    
   }
 
 // get all sections 
-  async getCourseSections(courseId:number){
+async getCourseSections(courseId:number,userId:number,pageNumber?:number){
+  if(!courseId) throw new BadRequestException();
+  const pageNum=pageNumber??0;
+  const sectionsPerPage=10;
 const sections= await this.sectinRepo.find({
-  where:{
-    course:{id:courseId}
-  }
+  where:{course:{id:courseId}}
+  ,skip:sectionsPerPage*(pageNum-1),
+    take:sectionsPerPage
 });
-if(sections.length==0) return new NotFoundException('No Sections Provided');
-return sections;
+let isEnrolled:boolean=false;
+let canAccess:boolean=false;
+if(userId){
+  canAccess=await this.courseService.verifyingInstractorOwnTheCourse(userId,courseId);
+  if(!canAccess)
+  isEnrolled=await this.enrollService.verifyStudentEnrollment(userId,courseId);
+}
+return {data:sections,
+  pageNum,sectionsPerPage,isEnrolled,canAccess
+};
   }
+
+ public async deleteSection(sectionId: number, insId: number) {
+  if (!sectionId) {
+    throw new BadRequestException('Required Value Unprovided');
+  }
+  await this.verifySectionBelongsToInstractor(sectionId, insId);
+  return await this.sectinRepo.delete({
+    id: sectionId,
+  });
+}
 
 public async updateSection(dto:UpdateSectionDto,sectionId:number,insId:number){
 if(!sectionId) throw new BadRequestException('Required Value Unprovided');
-const section=await this.sectinRepo.findOne({
-  where:{id:sectionId},relations:{
-    course:{
-      
-      Instractor:true
-    }
-  },select:{
-    course:{
-      id:true,
-      Instractor:{
-        id:true
-      }
-    }
-  }
-})
-if(!section) throw new NotFoundException('Section Is not Provided');
-if(section.course.Instractor.id!=insId) throw new UnauthorizedException('You are not allowed to access this section');
+const section=await this.verifySectionBelongsToInstractor(sectionId,insId);
 section.title=dto.title??section.title;
 section.order=dto.order??section.order;
  await this.sectinRepo.save(section);
@@ -72,6 +80,35 @@ section.order=dto.order??section.order;
   message:'Updated Successfully'
  }
 
+  }
+
+ public async getSection(sectionId: number) {
+  if (!sectionId) {
+    throw new BadRequestException('No Provided Value');
+  }
+
+  return await this.sectinRepo.findOne({
+    where: {
+      id: sectionId,
+    },
+    relations: {
+      course: {
+        Instractor: true,
+      },
+    },
+  });
+}
+  async verifySectionBelongsToInstractor(sectionId:number,insId:number){
+    const section=await this.getSection(sectionId);
+    if(!section) throw new NotFoundException('Section Is not Provided');
+    if(section.course.Instractor.id!=insId) throw new UnauthorizedException('You are not allowed to access this section');
+    return section;
+  }
+  public async getCourseBySectionId(sectioId:number){
+    const section=await this.sectinRepo.findOne({
+      where:{id:sectioId},relations:{course:{Instractor:true}}
+    })
+    return section?.course;
   }
 
 }

@@ -2,21 +2,29 @@
 import { LessonsEntity } from "src/lesson/lessons.entity";
 import { UserEntity } from "src/User/user.entity";
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
-import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-
+import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
+@Unique(['user', 'lesson'])
 @Entity({name:'progreses'})
 export class ProgressEntity{
-    @PrimaryGeneratedColumn()
-    id!:number;
+   @PrimaryGeneratedColumn()
+  id!: number;
 
-    @Column({type:'boolean'})
-    isCompleted!:boolean;
+  @Column({ type: 'int', default: 0 })
+  lastPosition!: number; // آخر ثانية وصلها الطالب
 
-     @UpdateDateColumn({type:'timestamp',default:()=>CURRENT_TIMESTAMP,nullable:true})
-      completedAt!:Date
-      
-    @ManyToOne(()=>LessonsEntity,(lesson)=>lesson.progress)
-    lesson!:LessonsEntity
+  @Column({ type: 'boolean', default: false })
+  completed!: boolean;
+
+  @CreateDateColumn({type:'timestamp',default:()=>CURRENT_TIMESTAMP})
+  startedAt!: Date;
+
+  @UpdateDateColumn({type:'timestamp',default:()=>CURRENT_TIMESTAMP})
+  updatedAt!: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  completedAt!: Date;
+  @ManyToOne(()=>LessonsEntity,(lesson)=>lesson.progress,{onDelete:'CASCADE'})
+  lesson!:LessonsEntity
 
 
     @ManyToOne(()=>UserEntity,(user)=>user.progress)

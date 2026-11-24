@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { SectionDto } from './dtos/section.dto';
 import { Payload } from 'src/common/Decorators/payload.decorator';
 import * as paylodType from 'src/utils/types/paylod.type';
@@ -16,24 +16,32 @@ export class SectionController {
 
     }
 
-    @Post()
+    @Post('')
     @Roles(UserRoles.INSTRACTOR)
     @UseGuards(AuthGuard,Roleguard)
     add(@Body() body:SectionDto,@Payload() payload:paylodType.PayloadType){
      return  this.sectionService.addSection(body,payload.id);
     }
-
+    
      @Get('sections/:id')
     @UseGuards(AuthGuard)
-    getAll(@Param('id',new ParseIntPipe) id:number){
-     return  this.sectionService.getCourseSections(id);
+    getAll(@Param('id',new ParseIntPipe) id:number,
+    @Query('pageNumber') pageNumber:number,@Payload() payload:paylodType.PayloadType){
+     return  this.sectionService.getCourseSections(id,payload.id,pageNumber);
     }
 
-      @Patch('update/:id')
+    @Patch('update/:id')
     @Roles(UserRoles.INSTRACTOR)
     @UseGuards(AuthGuard,Roleguard)
     update(@Param('id',new ParseIntPipe) id:number,@Body() body:SectionDto,@Payload() payload:paylodType.PayloadType){
-     return  this.sectionService.updateSection(body,id,payload.id);
+    return  this.sectionService.updateSection(body,id,payload.id);
+    }
+
+     @Delete('delete/:id')
+    @Roles(UserRoles.INSTRACTOR)
+    @UseGuards(AuthGuard,Roleguard)
+    delete(@Param('id',new ParseIntPipe) id:number,@Payload() payload:paylodType.PayloadType){
+    return  this.sectionService.deleteSection(id,payload.id);
     }
 
 }

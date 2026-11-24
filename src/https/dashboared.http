@@ -1,0 +1,13 @@
+## Instractor dashbared
+GET  http://localhost:3000/api/dashboared/instractor/numbers
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3OTQ4NDY2NTMsImV4cCI6MTc5NDg4MjY1M30.pbwxqKbosY3VR7_4Oq_ePkhHRbVqqs5CYopo--1iNfg
+
+###last info
+GET  http://localhost:3000/api/dashboared/instractor/lastInfo
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3OTQ4NDY2NTMsImV4cCI6MTc5NDg4MjY1M30.pbwxqKbosY3VR7_4Oq_ePkhHRbVqqs5CYopo--1iNfg
+
+
+
+### Instractor dashbared
+GET  http://localhost:3000/api/dashboared/student/info
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3OTQ4NDY2NTMsImV4cCI6MTc5NDg4MjY1M30.pbwxqKbosY3VR7_4Oq_ePkhHRbVqqs5CYopo--1iNfg

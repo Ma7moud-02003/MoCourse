@@ -1,14 +1,15 @@
-Post http://localhost:3000/api/buy/5
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Niwicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODUyNjc3MTYsImV4cCI6MTc4NTI3MTMxNn0.63pimMja5NVLLSaVQM8LK1jNa5oVe4LaBoXXQZyNPFA
+Post http://localhost:3000/api/buy/7
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Nywicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODY1NjU1OTIsImV4cCI6MTc4NjU2OTE5Mn0.ZoUSIVi9iN0PHOAr2cx-z157jg0rg8y7_YEjQhOT5hY
 Content-Type:application/json
 
 {
-
+"paymentMethod":"instapay",
+"transactionId":"9289898398938"
 }
 ### student confirm paying
-PATCH  http://localhost:3000/api/buy/confirm/2
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Niwicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODUyMjk4NjgsImV4cCI6MTc4NTIzMzQ2OH0.Lx-EfvmEW_ie9G1YC6KYdorMa4tcbhsInjtjJ4xhnXg
-Content-Type:application/json
+PATCH  http://localhost:3000/api/buy/confirm/5
+Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Nywicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODcwNzg4MzUsImV4cCI6MTc4NzA4MjQzNX0.9xzxcR-T9VX-JNKPR-CT7fcjNmhZtsVpriI0XIai5q0
+Content-Type: application/json
 
 {
     "paymentMethod":"instapay",
@@ -16,15 +17,24 @@ Content-Type:application/json
 
 }
 ### get Ins Purchase
-GET   http://localhost:3000/api/buy/myPurchases
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODUxMDI2NzIsImV4cCI6MTc4NTEwNjI3Mn0.KbwMn0SAFUGgsC4Rs5fS2OY59P5PXx7DP7bMXPs1oZI
-
+GET   http://localhost:3000/api/buy/myPurchases?status=WAITING_APPROVAL
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODYyOTYwNzAsImV4cCI6MTc4NjI5OTY3MH0.IoXoXNrC9Mfde3TPszK5v9xGd6-5Xodtd2rlJQct2do
 ### instarctor update status of purchase
-PATCH  http://localhost:3000/api/buy/update/3
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODUzNDg5MjYsImV4cCI6MTc4NTM1MjUyNn0.CwCRK4Ic9M4wXolqPUWB0uKaVMtOIeU4-XnCkWGqiCY
+PATCH  http://localhost:3000/api/buy/update/5
+Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODcwNzkxNTYsImV4cCI6MTc4NzA4Mjc1Nn0.MPTX8kvg2Ji8BvFGOJMbpx5VTOLPwgMY7MjNx0K8iUU
 Content-Type: application/json
 
 {
     "status":"PAID"
 
 }
+### get count of purshase 
+GET   http://localhost:3000/api/buy/myPurchasesCount?status=PAID
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODYyOTYwNzAsImV4cCI6MTc4NjI5OTY3MH0.IoXoXNrC9Mfde3TPszK5v9xGd6-5Xodtd2rlJQct2do
+
+### get count of purshase 
+GET   http://localhost:3000/api/buy/totalProfite
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODYyOTYwNzAsImV4cCI6MTc4NjI5OTY3MH0.IoXoXNrC9Mfde3TPszK5v9xGd6-5Xodtd2rlJQct2do
+
+###
+GET http://localhost:3000/auth/facebook/callback?code=123456

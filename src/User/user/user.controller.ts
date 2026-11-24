@@ -33,7 +33,7 @@ export class UserController {
     @UseGuards(AuthGuard)
     getUser(@Payload() payload){
     const id=payload.id;
-    return this.userService.getCurrentUser(id);
+    return this.userService.getInstractorInfo(id);
     }
     
   
@@ -74,9 +74,13 @@ export class UserController {
     @UseGuards(AuthGuard,Roleguard)
     deleteUserByAdmin(@Param('id',new ParseIntPipe) id ){
      return this.userService.deleteUser(id);
-
     }
 
+    @Get('role')
+    @UseGuards(AuthGuard)
+    getRole(@Payload() payload:paylodType.PayloadType){
+      return payload.role;
+    }
     
 
 

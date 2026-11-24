@@ -9,7 +9,7 @@ export class LoginDto{
 email:string|undefined;
 
 @MinLength(6)
-@MinLength(150)
+@MaxLength(150)
 @IsString() 
 @IsNotEmpty()
 password:string|undefined;

@@ -14,19 +14,33 @@ export class CloudinaryService {
 
     }
 
-    public uploadFile(file:any):Promise<UploadApiResponse>{
-    return new Promise((resolve,rejects)=>{
-    const upload=cloudinary.uploader.upload_stream(
-        {
-            folder:'course'
-        },
-        (error,result)=>{
-            if(error) return rejects(error);
-            resolve(result as UploadApiResponse)
-        }
-    )
-    Readable.from(file.buffer).pipe(upload)
-})
-    }
+    /**
+     * Upload image
+     * @param file 
+     * @returns urls
+     */
+    
+public uploadFile(
+  file: Express.Multer.File,
+  folder: string,
+  resourceType: 'image' | 'video' | 'raw' = 'image',
+): Promise<UploadApiResponse> {
+  return new Promise((resolve, reject) => {
+    const upload = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: resourceType,
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result as UploadApiResponse);
+      },
+    );
+
+    Readable.from(file.buffer).pipe(upload);
+  });
+}
+
+
     
 }

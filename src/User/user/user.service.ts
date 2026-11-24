@@ -10,13 +10,15 @@ import { DEFAULT_AVATARS,  } from 'src/utils/constants';
 import { JwtService } from '@nestjs/jwt';
 import { PayloadType } from 'src/utils/types/paylod.type';
 import { UpdateUserDto } from './Dtos/update.dto';
+import { PaymentinfoService } from 'src/instructor-payment-info/paymentinfo/paymentinfo.service';
 
 @Injectable()
 export class UserService {
     constructor(
     @InjectRepository(UserEntity)
     private userRepo:Repository<UserEntity>,
-    private jwtService:JwtService
+    private jwtService:JwtService,
+    private payment:PaymentinfoService
     ){
     }
 
@@ -98,14 +100,16 @@ async generateToken(payload:PayloadType){
 } 
 
 
-public async getCurrentUser(id:number){
+public async getInstractorInfo(id:number){
 const user=await this.userRepo.findOne({where:{id}});
 if(!user)  throw new NotFoundException('User Not Found');
 const {password ,...other}=user;
-return other;
+const paymentInfo=await this.payment.getInsPatmentInfo(id);
+return {personalInfo:other,paymentInfo};
 }
 
 public getAllUsers():Promise<any[]>{
+  
   return this.userRepo.find();
 }
 
@@ -139,5 +143,9 @@ const result=await this.userRepo.delete(id);
 if(result.affected==0) throw new NotFoundException();
 return {message:'User Deleted Successfully'};
 }
+
+
+
+
 
 }

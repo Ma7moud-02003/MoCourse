@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
 import { Payload } from 'src/common/Decorators/payload.decorator';
 import * as paylodType from 'src/utils/types/paylod.type';
 import { EnrollmentService } from './enrollment.service';
@@ -6,24 +6,74 @@ import { AuthGuard } from 'src/common/Guards/auth.guard';
 import { Roles } from 'src/common/Decorators/role.decorator';
 import { UserRoles } from 'src/utils/enums/userRole.enum';
 import { Roleguard } from 'src/common/Guards/role.guard';
+import { EnrollmentStatus } from 'src/utils/enums/enroll.enum';
 
 @Controller('api/enrollment/')
 export class EnrollmentController {
-constructor(private enrollService:EnrollmentService){}
+    constructor(private enrollService: EnrollmentService) { }
 
-@Post(':id')
-@Roles(UserRoles.STUDENT)
-@UseGuards(AuthGuard,Roleguard)
-enrollCourse(@Param('id',new ParseIntPipe) id,@Payload() payload:paylodType.PayloadType){
-return this.enrollService.enrollCourse(id,payload.id);
-}
+    @Post(':id')
+    @Roles(UserRoles.STUDENT)
+    @UseGuards(AuthGuard, Roleguard)
+    enrollCourse(@Param('id', new ParseIntPipe) id, @Payload() payload: paylodType.PayloadType) {
+        return this.enrollService.enrollCourse(id, payload.id);
+    }
 
-@Get('my_enrollments')
-@Roles(UserRoles.STUDENT)
-@UseGuards(AuthGuard,Roleguard)
-getEnrolledCourses(@Payload() payload:paylodType.PayloadType){
-    console.log(payload);
-    
-return this.enrollService.getStudentCourses(payload.id);
-}
+    @Get('my_enrollments')
+    @Roles(UserRoles.STUDENT)
+    @UseGuards(AuthGuard, Roleguard)
+    getEnrolledCourses(@Payload() payload: paylodType.PayloadType,@Query('status') status:EnrollmentStatus) {
+        console.log(payload);
+        return this.enrollService.getStudentCourses(payload.id);
+    }
+
+
+      @Get('isStudentEnroll/:courseId')
+    @UseGuards(AuthGuard, Roleguard)
+    verifyEnrollment(@Param('courseId', new ParseIntPipe) courseId: number, @Payload() payload: paylodType.PayloadType) {
+        console.log(payload);
+        return this.enrollService.verifyStudentEnrollment(courseId, payload.id);
+    }
+
+
+    @Get('suggestedCourses')
+    @Roles(UserRoles.STUDENT)
+    @UseGuards(AuthGuard, Roleguard)
+    getSuggestd(@Payload() payload: paylodType.PayloadType) {
+     console.log(payload);
+    return this.enrollService.getCommonCategory(payload.id);
+    }
+
+    @Get('students/:courseId')
+    @Roles(UserRoles.INSTRACTOR, UserRoles.ADMIN)
+    @UseGuards(AuthGuard, Roleguard)
+    getStudentsEnroll(@Param('courseId', new ParseIntPipe) courseId: number) {
+        return this.enrollService.getCourseStudents(courseId);
+    }
+
+
+    @Get('isStudentEnroll/:courseId')
+    @UseGuards(AuthGuard)
+    isStudentEnrolls(@Param('courseId', new ParseIntPipe) courseId: number, @Payload() payload: paylodType.PayloadType) {
+        return this.enrollService.verifyStudentEnrollment(courseId, payload.id);
+    }
+
+
+    @Get('course/studentsCount/:courseId')
+    @UseGuards(AuthGuard)
+    getStudentsCount(@Param('courseId', new ParseIntPipe) courseId: number) {
+        return this.enrollService.getCourseStdentsCount(courseId);
+    }
+
+    // count of studets belong  to instraactor
+    @Get('instractor/studentsCount')
+    @Roles(UserRoles.ADMIN, UserRoles.INSTRACTOR)
+    @UseGuards(AuthGuard, Roleguard)
+    getInstractorStudents(@Payload() payload: paylodType.PayloadType) {
+        return this.enrollService.getStudentsCountWithInstractor(payload.id);
+    }
+
+
+
+
 }

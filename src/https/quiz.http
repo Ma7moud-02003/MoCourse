@@ -1,0 +1,30 @@
+POST    http://localhost:3000/api/quiz/
+Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3OTA1MTcyMjgsImV4cCI6MTc5MDUyMDgyOH0.g8s1oN3bF5hagZaQPXUmhsTE2OVeyLMKJA-JXxqFkVM
+Content-Type: application/json
+
+{
+   "title": "Components Lesson Quiz",
+  "description": "Test your understanding of the lesson",
+  "passMark": 60,
+  "timeLimit": 15,
+  "maxAttempts": 1,
+  "shuffleQuestions": false,
+  "shuffleChoices": true,
+  "showResultImmediately": true,
+  "isPublished": true,
+  "courseId": 5,
+  "quizTarget":"course",
+  "totalMarks":120
+}
+ 
+### get course quizes
+Get  http://localhost:3000/api/quiz/courseQuiz/5
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Nywicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3OTA1MzEzNzMsImV4cCI6MTc5MDUzNDk3M30.wye9Dc2CMr2PMZWzyaIuX9wlveWVcxzXk0sTo9t6gm0
+
+### get ins quizes
+Get  http://localhost:3000/api/quiz/insQuizes
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3OTE3NDk5NDcsImV4cCI6MTc5MTc4NTk0N30.5kSA3alB3wT1HrBg6lwMMCwQtm7yucfryz_3WM39Fm4
+
+### get quiz details
+Get  http://localhost:3000/api/quiz/quiz-details/5
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3OTE3NDk5NDcsImV4cCI6MTc5MTc4NTk0N30.5kSA3alB3wT1HrBg6lwMMCwQtm7yucfryz_3WM39Fm4
