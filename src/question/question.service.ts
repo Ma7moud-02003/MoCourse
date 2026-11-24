@@ -7,6 +7,7 @@ import { QuizService } from 'src/quiz/quiz.service';
 import { UpdateQuestionDto } from './dtos/updateQuestion.dto';
 import { ChoiceEntity } from 'src/choice/choise.entity';
 import { QuizEntity } from 'src/quiz/quiz.entity';
+import { syncTotalMarks } from 'src/quiz/total-marks';
 
 
 @Injectable()
@@ -41,7 +42,17 @@ const questions=dto.questions.map(questionDto=>{
     })
     return question;
 })
-return await this.repo.save(questions)
+// lock the quiz row, save the questions and refresh totalMarks in one step
+return this.repo.manager.transaction(async (manager) => {
+    const quiz = await manager.findOne(QuizEntity, {
+        where: { id: dto.quizId },
+        lock: { mode: 'pessimistic_write' },
+    });
+    if (!quiz) throw new NotFoundException('Quiz not found');
+    const saved = await manager.save(questions);
+    await syncTotalMarks(manager, dto.quizId);
+    return saved;
+});
 }
 
 public async updateQuestion(insId: number, questionId: number, dto: UpdateQuestionDto) {
@@ -67,6 +78,7 @@ public async updateQuestion(insId: number, questionId: number, dto: UpdateQuesti
   }
 
   return this.repo.manager.transaction(async (manager) => {
+    const markBefore = existingQuestion.mark;
     existingQuestion.question = dto.question ?? existingQuestion.question;
     existingQuestion.type = dto.type ?? existingQuestion.type;
     existingQuestion.mark = dto.mark ?? existingQuestion.mark;
@@ -113,7 +125,15 @@ public async updateQuestion(insId: number, questionId: number, dto: UpdateQuesti
       });
     }
 
-    return manager.save(existingQuestion);
+    const saved = await manager.save(existingQuestion);
+    if (existingQuestion.mark !== markBefore) {
+      await manager.findOne(QuizEntity, {
+        where: { id: existingQuestion.quiz.id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      await syncTotalMarks(manager, existingQuestion.quiz.id);
+    }
+    return saved;
   });
 }
 
@@ -146,7 +166,9 @@ if(!question) throw new NotFoundException();
         throw new BadRequestException('Unpublish the exam before deleting its last question');
       }
     }
-    return manager.remove(question);
+    const removed = await manager.remove(question);
+    await syncTotalMarks(manager, quiz.id);
+    return removed;
   });
 }
 
