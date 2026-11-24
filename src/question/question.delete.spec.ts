@@ -84,8 +84,8 @@ describe('totalMarks on add and delete', () => {
   it('adding questions sets totalMarks to the sum of all marks', async () => {
     const { service, state } = build2({ published: false, questionIds: [1], marks: { 1: 2 } });
     const dto: any = { quizId: 10, questions: [
-      { question: 'a', type: 'mcq', mark: 3, order: 2, choices: [] },
-      { question: 'b', type: 'mcq', mark: 5, order: 3, choices: [] },
+      { question: 'a', type: 'mcq', mark: 3, order: 2, choices: [{ text: 'A', order: 1, isCorrect: true }, { text: 'B', order: 2, isCorrect: false }] },
+      { question: 'b', type: 'mcq', mark: 5, order: 3, choices: [{ text: 'A', order: 1, isCorrect: true }, { text: 'B', order: 2, isCorrect: false }] },
     ] };
     await service.addQuestins(3, dto);
     expect(state.quiz.totalMarks).toBe(10);
@@ -93,7 +93,45 @@ describe('totalMarks on add and delete', () => {
 
   it('adding to a non-owned exam changes nothing', async () => {
     const { service, state } = build2({ published: false, questionIds: [1], marks: { 1: 2 } });
-    await expect(service.addQuestins(99, { quizId: 10, questions: [{ question: 'a', type: 'mcq', mark: 3, order: 2, choices: [] }] } as any)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.addQuestins(99, { quizId: 10, questions: [{ question: 'a', type: 'mcq', mark: 3, order: 2, choices: [{ text: 'A', order: 1, isCorrect: true }, { text: 'B', order: 2, isCorrect: false }] }] } as any)).rejects.toBeInstanceOf(ForbiddenException);
+    expect(state.questions).toEqual([1]);
+  });
+});
+
+describe('addQuestins choice rules', () => {
+  const q = (type: string, choices: any[]) => ({ quizId: 10, questions: [{ question: 'a', type, mark: 1, order: 1, choices }] } as any);
+  const T = (text: string, isCorrect: boolean) => ({ text, order: 1, isCorrect });
+
+  it('rejects an mcq with no correct choice', async () => {
+    const { service, state } = build({ published: false, questionIds: [1] });
+    await expect(service.addQuestins(3, q('mcq', [T('a', false), T('b', false)]))).rejects.toBeInstanceOf(BadRequestException);
+    expect(state.questions).toEqual([1]);
+  });
+  it('rejects an mcq with two correct choices', async () => {
+    const { service } = build({ published: false, questionIds: [1] });
+    await expect(service.addQuestins(3, q('mcq', [T('a', true), T('b', true)]))).rejects.toBeInstanceOf(BadRequestException);
+  });
+  it('rejects an mcq with 1 or 7 choices', async () => {
+    const { service } = build({ published: false, questionIds: [1] });
+    await expect(service.addQuestins(3, q('mcq', [T('a', true)]))).rejects.toBeInstanceOf(BadRequestException);
+    const seven = [T('a', true), ...[1, 2, 3, 4, 5, 6].map((n) => T('x' + n, false))];
+    await expect(service.addQuestins(3, q('mcq', seven))).rejects.toBeInstanceOf(BadRequestException);
+  });
+  it('accepts an mcq with 6 choices, one correct', async () => {
+    const { service } = build({ published: false, questionIds: [1] });
+    const six = [T('a', true), ...[1, 2, 3, 4, 5].map((n) => T('x' + n, false))];
+    await expect(service.addQuestins(3, q('mcq', six))).resolves.toBeDefined();
+  });
+  it('true_false needs exactly 2 choices with one correct', async () => {
+    const { service } = build({ published: false, questionIds: [1] });
+    await expect(service.addQuestins(3, q('true_false', [T('t', true), T('f', false), T('x', false)]))).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.addQuestins(3, q('true_false', [T('t', true)]))).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.addQuestins(3, q('true_false', [T('t', true), T('f', false)]))).resolves.toBeDefined();
+  });
+  it('one bad question in a batch saves nothing', async () => {
+    const { service, state } = build({ published: false, questionIds: [1] });
+    const dto: any = { quizId: 10, questions: [q('mcq', [T('a', true), T('b', false)]).questions[0], q('mcq', [T('a', false), T('b', false)]).questions[0]] };
+    await expect(service.addQuestins(3, dto)).rejects.toBeInstanceOf(BadRequestException);
     expect(state.questions).toEqual([1]);
   });
 });
