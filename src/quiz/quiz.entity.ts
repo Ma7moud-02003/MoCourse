@@ -46,7 +46,7 @@ export class QuizEntity {
     @Column({type:'enum',enum:QuizTargetType})
     quizTarget!:QuizTargetType
 
-    @Column({ default: true })
+    @Column({ default: false })
     isPublished!: boolean;
 
     @CreateDateColumn({type:"timestamp",default:()=>CURRENT_TIMESTAMP})

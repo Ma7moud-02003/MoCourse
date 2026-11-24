@@ -6,6 +6,7 @@ import { CreateQuestionsDto } from './dtos/question.dto';
 import { QuizService } from 'src/quiz/quiz.service';
 import { UpdateQuestionDto } from './dtos/updateQuestion.dto';
 import { ChoiceEntity } from 'src/choice/choise.entity';
+import { QuizEntity } from 'src/quiz/quiz.entity';
 
 
 @Injectable()
@@ -119,7 +120,7 @@ public async updateQuestion(insId: number, questionId: number, dto: UpdateQuesti
 async  deleteQuestions(questionId:number,insId:number){
 if(!questionId||!insId) throw new BadRequestException();
 const question=await this.repo.findOne({
-    where:{id:questionId},relations:{quiz:true},select:{quiz:{id:true}}
+    where:{id:questionId},relations:{quiz:true},select:{quiz:{id:true,isPublished:true}}
 })
 if(!question) throw new NotFoundException();
 
@@ -132,7 +133,21 @@ if(!question) throw new NotFoundException();
   if (!verified) {
     throw new ForbiddenException();
   }
-  return  this.repo.remove(question);
+  // lock the quiz row so deletes and publish/unpublish on this exam run one at a time
+  return this.repo.manager.transaction(async (manager) => {
+    const quiz = await manager.findOne(QuizEntity, {
+      where: { id: question.quiz.id },
+      lock: { mode: 'pessimistic_write' },
+    });
+    if (!quiz) throw new NotFoundException();
+    if (quiz.isPublished) {
+      const questionsCount = await manager.count(QuestionEntity, { where: { quiz: { id: quiz.id } } });
+      if (questionsCount <= 1) {
+        throw new BadRequestException('Unpublish the exam before deleting its last question');
+      }
+    }
+    return manager.remove(question);
+  });
 }
 
 

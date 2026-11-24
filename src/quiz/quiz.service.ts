@@ -45,7 +45,7 @@ export class QuizService {
       shuffleQuestions: dto.shuffleQuestions,
       shuffleChoices: dto.shuffleChoices,
       showResultImmediately: dto.showResultImmediately,
-      isPublished: dto.isPublished,
+      isPublished: false,
       totalMarks: dto.totalMarks,
       quizTarget: dto.quizTarget,
       course:{ id:dto.courseId},
@@ -57,6 +57,7 @@ export class QuizService {
         course = await this.courseService.getCourseDetails(dto.courseId);
         const ownsCourse = await this.courseService.verifyingInstractorOwnTheCourse(insId, dto.courseId);
         if (!ownsCourse) throw new ForbiddenException('You do not own this course');
+        if (dto.isPublished) {throw new BadRequestException('A new exam starts as a draft. Add questions first, then publish it.');}
         if (dto.sectionId || dto.lessonId) {throw new BadRequestException('Course quiz cannot have sectionId or lessonId');}
         quiz = this.quizRepo.create({
           ...quizData
@@ -74,20 +75,23 @@ export class QuizService {
     throw new BadRequestException('Invalid quiz or instructor ID');
   }
 
-  const quiz = await this.quizRepo.findOne({
-    where: { id: quizId },
-  });
-
-  if (!quiz) {
-    throw new NotFoundException('Quiz not found');
-  }
-
   const isOwner = await this.verifyingInstractors(quizId, insId);
 
   if (!isOwner) {
     throw new ForbiddenException(
       'You are not allowed to update this quiz',
     );
+  }
+
+  // lock the quiz row so publish and question deletes run one at a time
+  return this.quizRepo.manager.transaction(async (manager) => {
+  const quiz = await manager.findOne(QuizEntity, {
+    where: { id: quizId },
+    lock: { mode: 'pessimistic_write' },
+  });
+
+  if (!quiz) {
+    throw new NotFoundException('Quiz not found');
   }
 
   if (dto.title !== undefined) {
@@ -123,6 +127,12 @@ export class QuizService {
   }
 
   if (dto.isPublished !== undefined) {
+    if (dto.isPublished && !quiz.isPublished) {
+      const questionsCount = await manager.count(QuestionEntity, { where: { quiz: { id: quizId } } });
+      if (questionsCount === 0) {
+        throw new BadRequestException('Add at least one question before publishing the exam');
+      }
+    }
     quiz.isPublished = dto.isPublished;
   }
 
@@ -133,7 +143,8 @@ export class QuizService {
   if (dto.instructions !== undefined) {
     quiz.instructions = dto.instructions;
   }
-  return await this.quizRepo.save(quiz);
+  return await manager.save(quiz);
+  });
 }
   /**
    * get quizes belngs to student

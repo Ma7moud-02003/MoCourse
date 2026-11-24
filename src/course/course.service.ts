@@ -203,7 +203,8 @@ export class CourseService {
                 },
                 quizzes:{
                     id:true,
-                    title:true
+                    title:true,
+                    isPublished:true
                 }
             }
         })
@@ -215,7 +216,9 @@ export class CourseService {
             isEnrolled=await this.enrollService.verifyStudentEnrollment(userId,courseId);
         }
         
-        return {...course,isEnrolled,canAccess};
+        // draft exams are visible only to the course owner
+        const quizzes = (course.quizzes ?? []).filter((q) => canAccess || q.isPublished);
+        return {...course,quizzes,isEnrolled,canAccess};
     }
 
     /**

@@ -11,12 +11,21 @@ Content-Type: application/json
   "shuffleQuestions": false,
   "shuffleChoices": true,
   "showResultImmediately": true,
-  "isPublished": true,
+  "isPublished": false,
   "courseId": 5,
   "quizTarget":"course",
   "totalMarks":120
 }
  
+### publish the exam (needs at least one question first)
+PATCH  http://localhost:3000/api/quiz/5
+Authorization: Bearer <instructor token>
+Content-Type: application/json
+
+{
+  "isPublished": true
+}
+
 ### get course quizes
 Get  http://localhost:3000/api/quiz/courseQuiz/5
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Nywicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3OTA1MzEzNzMsImV4cCI6MTc5MDUzNDk3M30.wye9Dc2CMr2PMZWzyaIuX9wlveWVcxzXk0sTo9t6gm0
