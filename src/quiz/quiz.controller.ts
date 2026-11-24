@@ -45,7 +45,7 @@ return this.quizService.getQuizDetails(quizId,payload.id,pageNum||1)
 @UseGuards(AuthGuard)
 @Get('courseQuiz/:id')
 getCourseQuizes(@Param('id',new ParseIntPipe()) id:number,@Payload() payload:paylodType.PayloadType){
-return this.quizService.getQuizes(payload.id,id)
+return this.quizService.getQuizes(id,payload.id)
 }
 
 @UseGuards(AuthGuard)
