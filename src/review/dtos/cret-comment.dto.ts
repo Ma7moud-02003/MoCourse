@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsString, Length, Max, Min } from "class-validator";
+import { IsInt, IsNotEmpty, IsNumber, IsString, Length, Max, Min } from "class-validator";
 
 export class CreatCommentDto{
 
@@ -8,6 +8,7 @@ export class CreatCommentDto{
     comment!:string;
     @IsNotEmpty()
     @IsNumber()
+    @IsInt()
     @Min(0)
     @Max(5)
     rateing!:number
