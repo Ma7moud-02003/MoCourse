@@ -119,6 +119,14 @@ export class ProgressService {
     }
 
     /**
+     * progress of one student in a course, for the course's own instructor
+     */
+    public async getStudentProgressForInstructor(courseId: number, studentId: number, insId: number) {
+        await this.enrollService.assertInstructorCanViewStudent(courseId, studentId, insId);
+        return await this.getCourseProgress(courseId, studentId);
+    }
+
+    /**
      *  getting progress of entire course 
      * @param courseId 
      * @param userId 

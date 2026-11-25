@@ -32,8 +32,8 @@ export class EnrollmentController {
     @Get('students/:courseId')
     @Roles(UserRoles.INSTRACTOR, UserRoles.ADMIN)
     @UseGuards(AuthGuard, Roleguard)
-    getStudentsEnroll(@Param('courseId', new ParseIntPipe) courseId: number) {
-        return this.enrollService.getCourseStudents(courseId);
+    getStudentsEnroll(@Param('courseId', new ParseIntPipe) courseId: number, @Payload() payload: paylodType.PayloadType) {
+        return this.enrollService.getCourseStudentsFor(courseId, payload.id, payload.role);
     }
 
 
