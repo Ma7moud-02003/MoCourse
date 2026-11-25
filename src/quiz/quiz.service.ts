@@ -188,7 +188,15 @@ async deleteQuize(quizId:number,insId:number){
     if (!quizId || !insId) throw new BadRequestException();
     const insVerifyed=await this.verifyingInstractors(quizId,insId);
     if(!insVerifyed) throw new ForbiddenException();
-    return await this.quizRepo.delete(quizId);
+    // student results must never be wiped by a delete: refuse once any attempt exists.
+    // The exclusive row lock makes this check and the delete atomic against a student starting.
+    return this.quizRepo.manager.transaction(async (manager) => {
+      const quiz = await manager.findOne(QuizEntity, { where: { id: quizId }, lock: { mode: 'pessimistic_write' } });
+      if (!quiz) throw new NotFoundException('Quiz not found');
+      const attempts = await manager.count(QuizAttemptEntity, { where: { quiz: { id: quizId } } });
+      if (attempts > 0) throw new ConflictException('Students already started this exam, so it cannot be deleted');
+      return await manager.delete(QuizEntity, quizId);
+    });
   }
 
  /**
