@@ -27,7 +27,7 @@ export class EnrollmentService {
      * @returns enrolled successsfully
      */
 async enrollCourse(courseId:number,studentId:number){
-if(!courseId&&!studentId) throw new BadRequestException();
+if(!courseId||!studentId) throw new BadRequestException();
 const exist=await this.enrollRepo.findOne({where:{
     course:{id:courseId},
     user:{id:studentId}
@@ -212,7 +212,7 @@ const total=await this.enrollRepo.count({
 const completed=await this.enrollRepo.count({
     where:{course:{Instractor:{id:insId}},status:EnrollmentStatus.COMPLETED}
 });
-if(total==0) return {percentage:0};
+if(total==0) return {totalStudents:0,completedStudents:0,completionPercentage:0};
 return {
      totalStudents: total,
     completedStudents: completed,
@@ -239,7 +239,7 @@ const coursesCount=await this.enrollRepo.find({
     },relations:{course:true},select:{course:{
         id:true,title:true,thumbnail:true
     }}
-    ,order:{enrolledAt:'ASC'},take:2
+    ,order:{enrolledAt:'DESC',id:'DESC'},take:2
 })
 return coursesCount;
 }
@@ -260,7 +260,7 @@ const inProgress=await this.enrollRepo.count({
     where:{user:{id:studentId},status:EnrollmentStatus.IN_PROGRESS}
 });
 
-const persentage=(completedCourse*100)/enrolldCount
+const persentage=enrolldCount===0?0:(completedCourse*100)/enrolldCount
 return {
     total:enrolldCount,completed:completedCourse,inProgress,persentage
 }}
@@ -268,9 +268,11 @@ return {
 
    public async getCommonCategory(studentId:number){
    const lastEnrollCourse=await this.enrollRepo.findOne({
-    where:{user:{id:studentId}},order:{enrolledAt:'ASC'},relations:{course:{category:true}}
+    where:{user:{id:studentId}},order:{enrolledAt:'DESC',id:'DESC'},relations:{course:{category:true}}
    })
-   const cat=lastEnrollCourse?.course.category.id;
+   const cat=lastEnrollCourse?.course?.category?.id;
+    // no enrollment (or a course without category): nothing to base a suggestion on
+    if(cat==null) return [];
     return this.courseService.getSuggestedCourses(cat);
    }
 
