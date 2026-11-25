@@ -4,7 +4,7 @@ import { StorageEngine } from 'multer';
 import { createWriteStream, mkdirSync, promises as fs } from 'fs';
 import { join } from 'path';
 import { Observable, finalize } from 'rxjs';
-import { TEMP_MAX_AGE_MS, uploadTmpDir, videoConcurrency, videoMaxBytes } from './upload.config';
+import { OWN_DIR_NAME, TEMP_MAX_AGE_MS, ownTmpDir, uploadConcurrency, uploadTmpRoot, videoMaxBytes } from './upload.config';
 
 const PREFIX = 'upload-';
 
@@ -17,7 +17,7 @@ export const tempDiskStorage: StorageEngine = {
   _handleFile(req: any, file, cb) {
     let path: string;
     try {
-      const dir = uploadTmpDir();
+      const dir = ownTmpDir();
       mkdirSync(dir, { recursive: true });
       path = join(dir, PREFIX + randomBytes(16).toString('hex'));
     } catch (e) {
@@ -25,10 +25,17 @@ export const tempDiskStorage: StorageEngine = {
     }
     (req.__tempUploadPaths ||= []).push(path);
     const out = createWriteStream(path);
+    let done = false;
+    const finish = (err: Error | null, info?: any) => {
+      if (done) return;
+      done = true;
+      if (err) out.destroy();
+      cb(err as any, info);
+    };
     file.stream.pipe(out);
-    file.stream.once('error', (e: Error) => cb(e));
-    out.once('error', (e: Error) => cb(e));
-    out.once('finish', () => cb(null, { path, size: out.bytesWritten } as any));
+    file.stream.once('error', (e: Error) => finish(e));
+    out.once('error', (e: Error) => finish(e));
+    out.once('finish', () => finish(null, { path, size: out.bytesWritten }));
   },
   _removeFile(_req, file: any, cb) {
     fs.unlink(file.path).then(() => cb(null), () => cb(null));
@@ -84,41 +91,55 @@ async function removeQuietly(path?: string) {
 export class BoundedTempUploadInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const req = context.switchToHttp().getRequest();
-    const release = lessonUploadSlots.tryAcquire(videoConcurrency());
+    const release = lessonUploadSlots.tryAcquire(uploadConcurrency());
     if (!release) {
       throw new HttpException('Too many uploads in progress, try again in a moment', HttpStatus.SERVICE_UNAVAILABLE);
     }
-    // a client that drops the connection frees its slot even if the handler is still running
-    req.once?.('close', () => {
-      if (req.aborted) release();
-    });
+    // the slot is freed only AFTER the temp file is deleted, so slots x cap really bounds live temp disk use
     return next.handle().pipe(
       finalize(() => {
-        release();
         const paths: string[] = [...(req.__tempUploadPaths ?? []), req.file?.path].filter(Boolean);
-        void Promise.all(paths.map((p) => removeQuietly(p)));
+        void Promise.all(paths.map((p) => removeQuietly(p))).finally(release);
       }),
     );
   }
 }
 
-/** Remove leftovers from crashes. Call once at startup. Only touches our own prefixed files. */
+function processAlive(pid: number) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e: any) {
+    return e?.code === 'EPERM'; // exists but not ours
+  }
+}
+
+/**
+ * Remove leftovers of OTHER processes. Call once at startup. Never touches this process's own folder.
+ * A foreign folder (p<pid>-<boot>) is removed when its process is gone, or when every file in it is older
+ * than TEMP_MAX_AGE_MS (covers a reused process id, e.g. container restarts). A live process's active
+ * upload keeps its file's modified time fresh, so it is not removed. Returns the number of folders removed.
+ */
 export async function sweepOldTempUploads(now = Date.now()) {
-  const dir = uploadTmpDir();
+  const root = uploadTmpRoot();
   let names: string[] = [];
   try {
-    names = await fs.readdir(dir);
+    names = await fs.readdir(root);
   } catch {
     return 0;
   }
   let removed = 0;
   for (const name of names) {
-    if (!name.startsWith(PREFIX)) continue;
-    const p = join(dir, name);
+    const m = /^p(\d+)-[0-9a-f]+$/.exec(name);
+    if (!m || name === OWN_DIR_NAME) continue;
+    const dir = join(root, name);
     try {
-      const st = await fs.stat(p);
-      if (now - st.mtimeMs > TEMP_MAX_AGE_MS) {
-        await fs.unlink(p);
+      const files = await fs.readdir(dir);
+      let newest = 0;
+      for (const f of files) newest = Math.max(newest, (await fs.stat(join(dir, f))).mtimeMs);
+      const stale = files.length === 0 || now - newest > TEMP_MAX_AGE_MS;
+      if (!processAlive(Number(m[1])) || stale) {
+        await fs.rm(dir, { recursive: true, force: true });
         removed++;
       }
     } catch {
