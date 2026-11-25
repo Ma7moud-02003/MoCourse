@@ -1,6 +1,6 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, LessThanOrEqual, Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { QuizAttemptEntity } from './quiz-attemp.entity';
 import { QuizEntity } from 'src/quiz/quiz.entity';
 import { QuestionEntity } from 'src/question/question.entity';
@@ -32,7 +32,9 @@ export class QuizAttemptService {
 
   /**
    * Start the student's one attempt on an exam, or resume it.
-   * - first call: creates the attempt, deadline = now + timeLimit minutes
+   * - first call inside the teacher's window (opensAt..closesAt): creates the attempt,
+   *   deadline = closesAt for everybody (a late entrant only gets the rest of the window)
+   * - before opensAt, after closesAt, or an exam with no window: nothing is created
    * - later calls before the deadline: returns the same attempt, same deadline
    * - already submitted: 409 with the result
    * - deadline passed and not submitted: the saved answers are graded and the attempt
@@ -42,7 +44,7 @@ export class QuizAttemptService {
     const quiz = await this.quizRepo.findOne({
       where: { id: quizId },
       relations: { course: true },
-      select: { id: true, isPublished: true, timeLimit: true, course: { id: true } },
+      select: { id: true, isPublished: true, course: { id: true } },
     });
     if (!quiz || !quiz.isPublished) throw new NotFoundException('Exam not found');
 
@@ -74,6 +76,17 @@ export class QuizAttemptService {
         return { kind: 'finished' as const, result };
       }
 
+      // no attempt yet: the exam must have a window and now must be inside it
+      if (!locked.opensAt || !locked.closesAt) {
+        throw new ConflictException('This exam has no opening and closing time yet, ask your teacher');
+      }
+      if (now.getTime() < locked.opensAt.getTime()) {
+        throw new ForbiddenException({ message: 'This exam has not opened yet', opensAt: locked.opensAt });
+      }
+      if (now.getTime() >= locked.closesAt.getTime()) {
+        throw new ConflictException({ message: 'This exam is closed', closesAt: locked.closesAt });
+      }
+
       const attempt = manager.create(QuizAttemptEntity, {
         quiz: { id: quizId },
         user: { id: studentId },
@@ -81,7 +94,7 @@ export class QuizAttemptService {
         submitted: false,
         score: 0,
         passed: false,
-        expiresAt: new Date(now.getTime() + locked.timeLimit * 60_000),
+        expiresAt: locked.closesAt,
         submittedAt: null,
       });
       const saved = await manager.save(attempt);
@@ -153,30 +166,23 @@ export class QuizAttemptService {
   }
 
   /**
-   * Background sweep: grade and close attempts whose deadline passed without a submit.
-   * Oldest deadline first, at most `limit` per call, each in its own transaction so one
-   * failure does not block the rest. Safe to run on several instances at once: finalize
-   * locks the attempt row and returns early if it is already submitted.
+   * The student's result. If the deadline passed and the attempt was never submitted,
+   * it is graded and closed here, from the saved answers (same routine as submit).
+   * Before the deadline an unsubmitted attempt has no result yet (409).
+   * Only the owner can read it; it carries scores only, never the correct choices.
    */
-  public async closeExpiredAttempts(limit = 100) {
-    const now = new Date();
-    const due = await this.attemptRepo.find({
-      where: { submitted: false, expiresAt: LessThanOrEqual(now) },
-      loadRelationIds: true,
-      order: { expiresAt: 'ASC' },
-      take: limit,
-    });
-    let closed = 0;
-    let failed = 0;
-    for (const a of due) {
-      try {
-        await this.attemptRepo.manager.transaction((m) => this.finalize(m, a.id, a.quiz as any as number, new Date()));
-        closed++;
-      } catch {
-        failed++;
+  public async getResult(attemptId: number, studentId: number): Promise<AttemptResult> {
+    return this.attemptRepo.manager.transaction(async (manager) => {
+      const attempt = await manager.findOne(QuizAttemptEntity, { where: { id: attemptId }, loadRelationIds: true });
+      if (!attempt || (attempt.user as any) !== studentId) throw new NotFoundException('Attempt not found');
+      const quizId = attempt.quiz as any as number;
+      const now = new Date();
+      if (!attempt.submitted && attempt.expiresAt.getTime() > now.getTime()) {
+        throw new ConflictException('The attempt is still in progress, there is no result yet');
       }
-    }
-    return { found: due.length, closed, failed, hasMore: due.length === limit };
+      // already submitted: finalize returns the stored result; otherwise it grades now
+      return this.finalize(manager, attemptId, quizId, now);
+    });
   }
 
   /**
