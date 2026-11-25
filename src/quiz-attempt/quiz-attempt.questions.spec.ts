@@ -47,3 +47,41 @@ describe('QuizAttemptService.getExamResults ownership', () => {
     await expect(build({ ownerId: 3 }).getExamResults(10, 99)).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
+
+describe('getExamResults when more attempts are due than one request grades', () => {
+  const past = new Date(Date.now() - 60e3);
+  function svcWith(stillDue: number) {
+    const rows = [
+      { id: 1, submitted: true, score: 4, passed: true, startedAt: past, submittedAt: past, expiresAt: past, user: { id: 1, fullName: 'A', email: 'a@x' } },
+      { id: 2, submitted: false, score: 0, passed: false, startedAt: past, submittedAt: null, expiresAt: past, user: { id: 2, fullName: 'B', email: 'b@x' } },
+      { id: 3, submitted: false, score: 0, passed: false, startedAt: past, submittedAt: null, expiresAt: new Date(Date.now() + 3600e3), user: { id: 3, fullName: 'C', email: 'c@x' } },
+    ];
+    let dueCalls = 0;
+    const manager: any = {
+      transaction: jest.fn(async () => undefined),
+      find: jest.fn(async () => []),
+      // 1st count = due-check after grading; others = submitted / passed
+      count: jest.fn(async (_e: any, o: any) => (o.where.submitted === false ? stillDue : o.where.passed ? 1 : 1)),
+      findAndCount: jest.fn(async () => [rows, 3]),
+      sum: jest.fn(async () => 4),
+    };
+    const quizRepo: any = { findOne: jest.fn(async () => ({ id: 10, passMark: 50, course: { Instractor: { id: 3 } } })) };
+    const svc: any = new QuizAttemptService({ manager } as any, quizRepo, {} as any);
+    svc.totalMarksOf = jest.fn(async () => 5);
+    return svc as QuizAttemptService;
+  }
+  it('ungraded expired attempts are pending_grading with null score, never zero or failed, and not in the average', async () => {
+    const r: any = await svcWith(1).getExamResults(10, 3);
+    const pending = r.attempts.find((a: any) => a.attemptId === 2);
+    expect(pending.status).toBe('pending_grading');
+    expect(pending.score).toBeNull();
+    expect(pending.passed).toBeNull();
+    expect(pending.percentage).toBeNull();
+    expect(r.attempts.find((a: any) => a.attemptId === 3).status).toBe('in_progress');
+    expect(r.summary).toMatchObject({ attempts: 3, submitted: 1, gradedAttempts: 1, pendingGrading: 1, inProgress: 1, complete: false, averageScore: 4, passed: 1, failed: 0 });
+  });
+  it('complete is true once nothing is pending', async () => {
+    const r: any = await svcWith(0).getExamResults(10, 3);
+    expect(r.summary.complete).toBe(true);
+  });
+});
