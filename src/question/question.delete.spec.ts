@@ -1,9 +1,9 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { QuestionService } from './question.service';
 import { QuizService } from 'src/quiz/quiz.service';
 import { fakeExamDb } from 'src/quiz/exam-fake-db-spec';
 
-function build(opts: { published: boolean; questionIds: number[]; marks?: Record<number, number> }) {
+function build(opts: { published: boolean; questionIds: number[]; marks?: Record<number, number>; attempts?: number }) {
   const db = fakeExamDb(opts);
   const courseService: any = {};
   const quizService = new QuizService(db.quizRepo, db.questionRepo, courseService, {} as any);
@@ -133,5 +133,29 @@ describe('addQuestins choice rules', () => {
     const dto: any = { quizId: 10, questions: [q('mcq', [T('a', true), T('b', false)]).questions[0], q('mcq', [T('a', false), T('b', false)]).questions[0]] };
     await expect(service.addQuestins(3, dto)).rejects.toBeInstanceOf(BadRequestException);
     expect(state.questions).toEqual([1]);
+  });
+});
+
+describe('exam is frozen once a student started', () => {
+  const T = (text: string, isCorrect: boolean) => ({ text, order: 1, isCorrect });
+  const newQ: any = { quizId: 10, questions: [{ question: 'a', type: 'mcq', mark: 1, order: 9, choices: [T('a', true), T('b', false)] }] };
+
+  it('blocks adding questions once an attempt exists', async () => {
+    const { service, state } = build({ published: true, questionIds: [1, 2], attempts: 1 });
+    await expect(service.addQuestins(3, newQ)).rejects.toBeInstanceOf(ConflictException);
+    expect(state.questions).toEqual([1, 2]);
+  });
+
+  it('blocks deleting questions once an attempt exists', async () => {
+    const { service, state } = build({ published: true, questionIds: [1, 2], attempts: 2 });
+    await expect(service.deleteQuestions(1, 3)).rejects.toBeInstanceOf(ConflictException);
+    expect(state.questions).toEqual([1, 2]);
+  });
+
+  it('still allows both while there are no attempts', async () => {
+    const { service, state } = build({ published: true, questionIds: [1, 2], attempts: 0 });
+    await service.addQuestins(3, newQ);
+    await service.deleteQuestions(1, 3);
+    expect(state.questions).toHaveLength(2);
   });
 });
