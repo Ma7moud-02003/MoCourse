@@ -14,8 +14,12 @@ Always run them on a copy of the data first, and take a backup before running on
 
 ## What is in them
 
-1. `Baseline`: the schema at main f7cc77d. Empty database: creates everything. Database that already has the
-   tables: skips. Revert is refused on purpose (it would drop all data).
+1. `Baseline`: the schema at main f7cc77d. Empty database: creates everything (the simple, tested path for a new
+   setup: create an empty database, run `npm run migration:run`). Database that already has tables: the baseline is
+   built in a scratch schema and compared with the real one. If they match, it is adopted; if not, the migration
+   stops with the list of differences and changes nothing. Databases built by main at 9e946f4 or f7cc77d match;
+   older ones (before the exam window and unique rules) do not, so use an empty database for those.
+   Revert is refused on purpose (it would drop all data).
 2. `AttemptTimestampsToTimestamptz`: `startedAt`, `expiresAt`, `submittedAt` (attempts) and `answeredAt` (answers)
    become `timestamptz`. Old values are wall-clock times without a zone, so the migration needs to know which zone
    wrote them. It will not guess. Set:
