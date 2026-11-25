@@ -45,10 +45,12 @@ async getCourseSections(courseId:number,userId:number,pageNumber?:number,role?:U
   if(!courseId) throw new BadRequestException();
   // a draft course's sections are visible only to its owner, an admin, or an already enrolled student
   if(!(await this.courseService.canViewCourse(courseId,userId,role))) throw new NotFoundException('Course not found');
-  const pageNum=pageNumber??0;
+  const parsed=Number(pageNumber);
+const pageNum=Number.isInteger(parsed)&&parsed>0?parsed:0;
   const sectionsPerPage=10;
 const sections= await this.sectinRepo.find({
   where:{course:{id:courseId}}
+  ,order:{order:'ASC',id:'ASC'}
   ,skip:sectionsPerPage*Math.max(pageNum-1,0),
     take:sectionsPerPage
 });
