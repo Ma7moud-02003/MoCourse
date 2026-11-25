@@ -34,9 +34,8 @@ export class ProgressController {
     @Get('instractor/course_progress/:courseId/:studentId')
     @Roles(UserRoles.INSTRACTOR)
     @UseGuards(AuthGuard, Roleguard)
-    getStudentProgressForInstractor(@Param('courseId', new ParseIntPipe) courseId: number, @Param('studentId', new ParseIntPipe) studentId: number) {
-        console.log(courseId, studentId);
-        return this.progService.getCourseProgress(courseId, studentId);
+    getStudentProgressForInstractor(@Param('courseId', new ParseIntPipe) courseId: number, @Param('studentId', new ParseIntPipe) studentId: number, @Payload() payload: paylodType.PayloadType) {
+        return this.progService.getStudentProgressForInstructor(courseId, studentId, payload.id);
     }
 
     @Patch('update_lesson')
