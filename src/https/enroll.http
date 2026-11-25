@@ -1,5 +1,5 @@
 GET  http://localhost:3000/api/enrollment/my_enrollments
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Nywicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODkwNjEwMTcsImV4cCI6MTc4OTA2NDYxN30.zBOnXwFpBbj5K7zxqHOTUgNM-fRXjgQpSG-sKrAKMj0
+Authorization: Bearer YOUR_TOKEN_HERE
 ### get students who purchase this course
 GET  http://localhost:3000/api/enrollment/students/5
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODYxMjg0OTMsImV4cCI6MTc4NjEzMjA5M30.fH2eX-iyW5FTHgpL7v16nK5t0fDEl-rB390sztYrRGg
+Authorization: Bearer YOUR_TOKEN_HERE
