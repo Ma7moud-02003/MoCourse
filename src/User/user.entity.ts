@@ -58,7 +58,7 @@ export class UserEntity{
     @OneToMany(()=>QuizAttemptEntity,(quizettemp)=>quizettemp.user)
      quizAttempts!:QuizAttemptEntity[]
      
-    @OneToMany(()=>ReviewEntity,(rev)=>rev.course)
+    @OneToMany(()=>ReviewEntity,(rev)=>rev.user)
     reviews!:ReviewEntity
 
      
