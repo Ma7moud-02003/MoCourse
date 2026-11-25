@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 import { Readable } from 'stream';
+import { createReadStream } from 'fs';
 @Injectable()
 export class CloudinaryService {
     constructor(public configService:ConfigService){
@@ -43,4 +44,28 @@ public uploadFile(
 
 
     
+
+    /**
+     * Upload a video from a file on disk (chunked, so memory use stays at about one chunk).
+     * Returns provider-neutral fields so lesson code never touches Cloudinary types for videos.
+     */
+    public uploadVideoFromPath(path: string, folder: string): Promise<{ url: string; publicId: string; durationSeconds: number }> {
+        return new Promise((resolve, reject) => {
+            let input: ReturnType<typeof createReadStream>;
+            const out = cloudinary.uploader.upload_chunked_stream(
+                { folder, resource_type: 'video' },
+                (error, result) => {
+                    if (error) {
+                        input?.destroy(); // release the file handle on provider failure
+                        return reject(error);
+                    }
+                    const r = result as UploadApiResponse;
+                    resolve({ url: r.secure_url, publicId: r.public_id, durationSeconds: Math.round(r.duration) });
+                },
+            );
+            input = createReadStream(path);
+            input.on('error', reject);
+            input.pipe(out);
+        });
+    }
 }

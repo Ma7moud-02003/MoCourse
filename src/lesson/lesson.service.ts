@@ -1,6 +1,8 @@
+import { pdfMaxBytes } from 'src/common/upload/upload.config';
+import { readFile } from 'fs/promises';
 import { assertPdfFile } from 'src/utils/upload-validation';
 import { BadRequestException, ForbiddenException, forwardRef, Inject, Injectable,
-NotFoundException, UnauthorizedException } from '@nestjs/common';
+NotFoundException, PayloadTooLargeException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessonsEntity } from './lessons.entity';
 import { assertNoExamAttempts } from 'src/quiz/exam-guard';
@@ -142,13 +144,24 @@ export class LessonService {
         switch (lesson.type) {
             case LessonType.VIDEO: {
                 if (!file.mimetype.startsWith('video/')) throw new BadRequestException('This lessen type acccept only Vido')
-                resulte = await this.cloudinaryService.uploadFile(file, 'course/vidoes', 'video');
-                lesson.videoUrl = resulte.secure_url;
-                lesson.videoPublicId = resulte.public_id;
-                lesson.duration = Math.round(resulte.duration)
+                if (file.path) {
+                    // disk-backed upload: streamed from the temp file, never fully in memory
+                    const video = await this.cloudinaryService.uploadVideoFromPath(file.path, 'course/vidoes');
+                    lesson.videoUrl = video.url;
+                    lesson.videoPublicId = video.publicId;
+                    lesson.duration = video.durationSeconds;
+                } else {
+                    resulte = await this.cloudinaryService.uploadFile(file, 'course/vidoes', 'video');
+                    lesson.videoUrl = resulte.secure_url;
+                    lesson.videoPublicId = resulte.public_id;
+                    lesson.duration = Math.round(resulte.duration)
+                }
                 break
             }
             case LessonType.PDF: {
+                // PDFs have their own limit (PDF_MAX_UPLOAD_BYTES), checked before the file is read into memory
+                if ((file.size ?? file.buffer?.length ?? 0) > pdfMaxBytes()) throw new PayloadTooLargeException('PDF is too large');
+                if (file.path && !file.buffer) file = { ...file, buffer: await readFile(file.path) };
                 assertPdfFile(file);
                 resulte = await this.cloudinaryService.uploadFile(file, 'course/pdfs', 'raw');
                 lesson.pdfUrl = resulte.secure_url;
