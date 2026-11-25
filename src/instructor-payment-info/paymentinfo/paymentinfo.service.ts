@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PaymentInfoEntity } from '../paymentInfo.entity';
 import { Repository } from 'typeorm';
@@ -12,12 +12,24 @@ export class PaymentinfoService {
             ){}
 
         async addPaymentInfo(dto:PaymentInfoDto,instractorId:number){
+        const already=await this.paymentInfoRepo.findOne({where:{instractor:{id:instractorId}}});
+        if(already) throw new ConflictException('Payment information already exists, update it instead');
         const paymentInfo=this.paymentInfoRepo.create({
-       ...dto,
+        instapay:dto.instapay,
+        vodafonCach:dto.vodafoneCash,
+        orangeCash:dto.orangeCash,
+        bankAccount:dto.bankAccount,
+        ownerName:dto.ownerName,
         instractor:{id:instractorId}
     })
 
+    try{
     await this.paymentInfoRepo.save(paymentInfo);
+    }catch(e:any){
+      // two adds at the same moment: the database unique rule lets one win, the other gets the same 409
+      if((e?.code??e?.driverError?.code)==='23505') throw new ConflictException('Payment information already exists, update it instead');
+      throw e;
+    }
     return {
         message:'Payment Information added successfully'
     }
@@ -38,6 +50,11 @@ export class PaymentinfoService {
             message:'Updated Successfully'
           }}
 
+        // null when the instructor has not added any payment info
+        async findInsPaymentInfo(instractorId:number){
+            return await this.paymentInfoRepo.findOne({where:{instractor:{id:instractorId}}});
+          }
+
         async  getInsPatmentInfo(instractorId:number){
             const payment=await this.paymentInfoRepo.findOne({where:{
                 instractor:{id:instractorId}
@@ -53,4 +70,3 @@ export class PaymentinfoService {
           }
 
 }
-
