@@ -1,6 +1,7 @@
 import { BadRequestException, forwardRef, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { SectionEntity } from './section.entity';
+import { assertNoExamAttempts } from 'src/quiz/exam-guard';
 import { Repository } from 'typeorm';
 import { SectionDto } from './dtos/section.dto';
 import { CourseService } from 'src/course/course.service';
@@ -65,8 +66,10 @@ return {data:sections,
     throw new BadRequestException('Required Value Unprovided');
   }
   await this.verifySectionBelongsToInstractor(sectionId, insId);
-  return await this.sectinRepo.delete({
-    id: sectionId,
+  // deleting a section removes its lessons and any exam linked to it (legacy data): refuse if attempted
+  return await this.sectinRepo.manager.transaction(async (manager) => {
+    await assertNoExamAttempts(manager, [{ section: { id: sectionId } }, { lesson: { section: { id: sectionId } } }], 'Students already attempted an exam in this section, so it cannot be deleted');
+    return await manager.delete(SectionEntity, { id: sectionId });
   });
 }
 

@@ -9,6 +9,7 @@ export function fakeExamDb(opts: { published: boolean; questionIds: number[]; ow
   const state = {
     quiz: { id: 10, isPublished: opts.published, title: 'Quiz', opensAt: new Date('2099-01-01T07:00:00Z'), closesAt: new Date('2099-01-01T08:00:00Z'), course: { Instractor: { id: opts.ownerId ?? 3 } } } as any,
     questions: [...opts.questionIds],
+    deleted: false,
     marks: { ...(opts.marks ?? {}) } as Record<number, number>,
   };
   let locked: Promise<void> = Promise.resolve();
@@ -40,6 +41,11 @@ export function fakeExamDb(opts: { published: boolean; questionIds: number[]; ow
       update: async (_entity: any, _where: any, patch: any) => {
         await tick();
         state.quiz = { ...state.quiz, ...patch };
+      },
+      delete: async (_entity: any, _id: number) => {
+        await tick();
+        state.deleted = true;
+        return { affected: 1 };
       },
       remove: async (q: any) => {
         await tick();

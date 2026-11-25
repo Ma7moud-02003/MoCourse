@@ -1,12 +1,16 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, LessThanOrEqual, Repository } from 'typeorm';
+import { stableShuffle, seedOf } from './stable-shuffle';
 import { QuizAttemptEntity } from './quiz-attemp.entity';
+import { CourseEntity } from 'src/course/course.entity';
 import { QuizEntity } from 'src/quiz/quiz.entity';
 import { QuestionEntity } from 'src/question/question.entity';
 import { StudentAnswerEntity } from 'src/student-answer/student_answer.entity';
 import { ChoiceEntity } from 'src/choice/choise.entity';
 import { EnrollmentService } from 'src/enrollment/enrollment.service';
+
+const RESULTS_FINALIZE_BATCH = 200;
 
 export type AttemptResult = {
   attemptId: number;
@@ -56,6 +60,9 @@ export class QuizAttemptService {
     const outcome = await this.attemptRepo.manager.transaction(async (manager) => {
       // shared row lock: students starting together do not wait for each other,
       // but an instructor edit (exclusive lock) and a start never overlap
+      // course row first (shared), then the exam row: same order as course delete, so no deadlock
+      const courseRow = await manager.findOne(CourseEntity, { where: { id: quiz.course.id }, select: { id: true }, lock: { mode: 'pessimistic_read' } });
+      if (!courseRow) throw new NotFoundException('Exam not found');
       const locked = await manager.findOne(QuizEntity, {
         where: { id: quizId },
         lock: { mode: 'pessimistic_read' },
@@ -183,6 +190,121 @@ export class QuizAttemptService {
       // already submitted: finalize returns the stored result; otherwise it grades now
       return this.finalize(manager, attemptId, quizId, now);
     });
+  }
+
+  /**
+   * The questions a student answers. Only the student's own unfinished attempt can read them.
+   * Never includes which choice is correct. If the exam shuffles, the order is derived from the
+   * attempt id, so it is the same every time the student comes back.
+   */
+  public async getQuestions(attemptId: number, studentId: number) {
+    const manager = this.attemptRepo.manager;
+    const attempt = await manager.findOne(QuizAttemptEntity, { where: { id: attemptId }, loadRelationIds: true });
+    if (!attempt || (attempt.user as any) !== studentId) throw new NotFoundException('Attempt not found');
+    const now = new Date();
+    if (attempt.submitted || attempt.expiresAt.getTime() <= now.getTime()) {
+      throw new ConflictException('This attempt is finished, ask for the result instead');
+    }
+    const quizId = attempt.quiz as any as number;
+    const quiz = await manager.findOne(QuizEntity, { where: { id: quizId } });
+    if (!quiz) throw new NotFoundException('Exam not found');
+    const rows = await manager.find(QuestionEntity, { where: { quiz: { id: quizId } }, relations: { choices: true } });
+    const byOrder = <T extends { order: number; id: number }>(a: T, b: T) => a.order - b.order || a.id - b.id;
+    let questions = [...rows].sort(byOrder);
+    if (quiz.shuffleQuestions) questions = stableShuffle(questions, seedOf(attemptId));
+    return {
+      attemptId,
+      quizId,
+      expiresAt: attempt.expiresAt,
+      serverNow: now,
+      questions: questions.map((q) => {
+        let choices = [...(q.choices ?? [])].sort(byOrder);
+        if (quiz.shuffleChoices) choices = stableShuffle(choices, seedOf(attemptId, q.id));
+        // explicit fields only: nothing about correctness can leak
+        return { id: q.id, question: q.question, type: q.type, mark: q.mark, choices: choices.map((c) => ({ id: c.id, text: c.text })) };
+      }),
+    };
+  }
+
+  /**
+   * Teacher's results for one exam. Any attempt whose deadline passed without a submit is
+   * graded first (same routine as submit), so nobody shows up as an open zero.
+   * Only the instructor who owns the exam's course can read it.
+   */
+  public async getExamResults(quizId: number, instructorId: number, page = 1, limit = 20) {
+    const quiz = await this.quizRepo.findOne({ where: { id: quizId }, relations: { course: { Instractor: true } } });
+    if (!quiz) throw new NotFoundException('Exam not found');
+    if (quiz.course?.Instractor?.id !== instructorId) throw new ForbiddenException('You do not own this exam');
+    const pageSize = Math.min(Math.max(limit, 1), 100);
+    const pageNum = Math.max(page, 1);
+    const manager = this.attemptRepo.manager;
+
+    // finalize due attempts, bounded per request; the rest are reported, not hidden
+    const due = await manager.find(QuizAttemptEntity, {
+      where: { quiz: { id: quizId }, submitted: false, expiresAt: LessThanOrEqual(new Date()) },
+      order: { id: 'ASC' },
+      take: RESULTS_FINALIZE_BATCH,
+    });
+    let failed = 0;
+    for (const a of due) {
+      try {
+        await manager.transaction((m) => this.finalize(m, a.id, quizId, new Date()));
+      } catch {
+        failed++;
+      }
+    }
+    const stillDue = await manager.count(QuizAttemptEntity, {
+      where: { quiz: { id: quizId }, submitted: false, expiresAt: LessThanOrEqual(new Date()) },
+    });
+
+    const nowMs = Date.now();
+    const total = await this.totalMarksOf(manager, quizId);
+    const [rows, count] = await manager.findAndCount(QuizAttemptEntity, {
+      where: { quiz: { id: quizId } },
+      relations: { user: true },
+      select: { id: true, submitted: true, expiresAt: true, score: true, passed: true, startedAt: true, submittedAt: true, user: { id: true, fullName: true, email: true } },
+      order: { id: 'ASC' },
+      skip: (pageNum - 1) * pageSize,
+      take: pageSize,
+    });
+    const submitted = await manager.count(QuizAttemptEntity, { where: { quiz: { id: quizId }, submitted: true } });
+    const passed = await manager.count(QuizAttemptEntity, { where: { quiz: { id: quizId }, submitted: true, passed: true } });
+    const scoreSum = (await manager.sum(QuizAttemptEntity, 'score', { quiz: { id: quizId }, submitted: true })) ?? 0;
+    return {
+      quizId,
+      totalMarks: total,
+      passMark: quiz.passMark,
+      summary: {
+        attempts: count,
+        submitted,
+        inProgress: count - submitted - stillDue,
+        pendingGrading: stillDue,
+        // true only when every attempt is graded or still running; averageScore, passed and failed
+        // count graded (submitted) attempts only, never pending ones
+        complete: stillDue === 0,
+        gradedAttempts: submitted,
+        passed,
+        failed: submitted - passed,
+        averageScore: submitted ? Math.round((scoreSum / submitted) * 100) / 100 : null,
+        pendingFinalization: stillDue,
+        finalizeErrors: failed,
+      },
+      page: pageNum,
+      pageSize,
+      attempts: rows.map((a) => ({
+        attemptId: a.id,
+        student: { id: a.user.id, fullName: a.user.fullName, email: a.user.email },
+        // pending_grading = the deadline passed but this attempt has not been graded yet (only when more than
+        // the per-request batch were due). It has no score, it is not a zero and not a fail.
+        status: a.submitted ? 'submitted' : a.expiresAt.getTime() <= nowMs ? 'pending_grading' : 'in_progress',
+        startedAt: a.startedAt,
+        submittedAt: a.submittedAt,
+        // an open attempt has no score yet
+        score: a.submitted ? a.score : null,
+        percentage: a.submitted ? (total > 0 ? Math.round((a.score * 10000) / total) / 100 : 0) : null,
+        passed: a.submitted ? a.passed : null,
+      })),
+    };
   }
 
   /**

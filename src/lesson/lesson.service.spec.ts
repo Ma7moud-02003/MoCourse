@@ -11,6 +11,8 @@ function setup() {
     save: jest.fn(async (x) => x),
     remove: jest.fn(async (x) => x),
   };
+  const mgr: any = { find: jest.fn(async () => []), count: jest.fn(async () => 0), remove: lessonRepo.remove };
+  lessonRepo.manager = { transaction: (fn: any) => fn(mgr) };
   const sectionService: any = { getSection: jest.fn().mockResolvedValue({ id: 2, course: { id: 5 } }) };
   const courseService: any = { getSingleCourse: jest.fn().mockResolvedValue({ id: 5, Instractor: { id: OWNER } }) };
   const cloud: any = { uploadFile: jest.fn() };

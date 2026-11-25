@@ -86,6 +86,7 @@ describe('QuizAttemptService.startAttempt', () => {
     const { service, state } = build();
     await service.startAttempt(10, 7);
     expect(state.lockModes).toEqual(['pessimistic_read']);
+    expect(state.courseLocks).toEqual(['pessimistic_read']); // course row is locked (shared) before the exam row
   });
 
   it('the attempt table has a unique rule on (quiz, user)', () => {

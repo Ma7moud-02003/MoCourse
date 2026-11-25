@@ -10,3 +10,6 @@ export const  DEFAULT_AVATARS = {
 };
 
 // Payload Type
+
+// login token lifetime: 2 hours, in seconds. A fixed number, so a config string can never be read as milliseconds.
+export const JWT_LIFETIME_SECONDS = 2 * 60 * 60;
