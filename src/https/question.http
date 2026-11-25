@@ -1,5 +1,5 @@
 POST http://localhost:3000/api/question/
-Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3OTA1MzExODgsImV4cCI6MTc5MDUzNDc4OH0.mWeXzuzmIOuNUVcbJH9IK9MPmWb_qDLyjY4gq2auPCk
+Authorization:Bearer YOUR_TOKEN_HERE
 Content-Type: application/json
 
 {
