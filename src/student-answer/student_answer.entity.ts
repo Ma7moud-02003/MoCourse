@@ -20,7 +20,7 @@ export class StudentAnswerEntity {
     })
     earnedMark!: number;
 
-    @CreateDateColumn()
+    @CreateDateColumn({type:"timestamptz"})
     answeredAt!: Date;
 
     @ManyToOne(() => QuizAttemptEntity,attempt => attempt.answers,{onDelete: 'CASCADE'})
