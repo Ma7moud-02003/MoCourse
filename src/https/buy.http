@@ -1,5 +1,5 @@
 Post http://localhost:3000/api/buy/7
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Nywicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODY1NjU1OTIsImV4cCI6MTc4NjU2OTE5Mn0.ZoUSIVi9iN0PHOAr2cx-z157jg0rg8y7_YEjQhOT5hY
+Authorization: Bearer YOUR_TOKEN_HERE
 Content-Type:application/json
 
 {
@@ -8,7 +8,7 @@ Content-Type:application/json
 }
 ### student confirm paying
 PATCH  http://localhost:3000/api/buy/confirm/5
-Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Nywicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODcwNzg4MzUsImV4cCI6MTc4NzA4MjQzNX0.9xzxcR-T9VX-JNKPR-CT7fcjNmhZtsVpriI0XIai5q0
+Authorization:Bearer YOUR_TOKEN_HERE
 Content-Type: application/json
 
 {
@@ -18,10 +18,10 @@ Content-Type: application/json
 }
 ### get Ins Purchase
 GET   http://localhost:3000/api/buy/myPurchases?status=WAITING_APPROVAL
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODYyOTYwNzAsImV4cCI6MTc4NjI5OTY3MH0.IoXoXNrC9Mfde3TPszK5v9xGd6-5Xodtd2rlJQct2do
+Authorization: Bearer YOUR_TOKEN_HERE
 ### instarctor update status of purchase
 PATCH  http://localhost:3000/api/buy/update/5
-Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODcwNzkxNTYsImV4cCI6MTc4NzA4Mjc1Nn0.MPTX8kvg2Ji8BvFGOJMbpx5VTOLPwgMY7MjNx0K8iUU
+Authorization:Bearer YOUR_TOKEN_HERE
 Content-Type: application/json
 
 {
@@ -30,11 +30,11 @@ Content-Type: application/json
 }
 ### get count of purshase 
 GET   http://localhost:3000/api/buy/myPurchasesCount?status=PAID
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODYyOTYwNzAsImV4cCI6MTc4NjI5OTY3MH0.IoXoXNrC9Mfde3TPszK5v9xGd6-5Xodtd2rlJQct2do
+Authorization: Bearer YOUR_TOKEN_HERE
 
 ### get count of purshase 
 GET   http://localhost:3000/api/buy/totalProfite
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODYyOTYwNzAsImV4cCI6MTc4NjI5OTY3MH0.IoXoXNrC9Mfde3TPszK5v9xGd6-5Xodtd2rlJQct2do
+Authorization: Bearer YOUR_TOKEN_HERE
 
 ###
 GET http://localhost:3000/auth/facebook/callback?code=123456

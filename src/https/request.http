@@ -4,7 +4,7 @@ Content-Type:application/json
 {
 "fullName":"Yousef Amr",
 "email":"Yousef123@gmail.com",
-"password":"Yousef123",
+"password":"YOUR_PASSWORD_HERE",
 "role":"student"
 }
 
@@ -14,7 +14,7 @@ Content-Type:application/json
 
 {
 "email":"MahmoudAmr275@gmail.com",
-"password":"MahmoudAmr275"
+"password":"YOUR_PASSWORD_HERE"
 }
 
 ### Login Request by instractor 
@@ -23,7 +23,7 @@ Content-Type:application/json
 
 {
 "email":"Anwer2003@gmail.com",
-"password":"Anwer2003"
+"password":"YOUR_PASSWORD_HERE"
 }
 
 
@@ -34,19 +34,19 @@ Content-Type:application/json
 {
     
 "email":"Yousef123@gmail.com",
-"password":"Yousef123"
+"password":"YOUR_PASSWORD_HERE"
 }
 ### Get  Current user
 GET  http://localhost:3000/api/user/currentUser
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3OTA4ODQzODAsImV4cCI6MTc5MDkyMDM4MH0.5Yw-7oiAWkStqtiPmF3LtE1lzHvXRQ5Hiyq_KeegJeM
+Authorization: Bearer YOUR_TOKEN_HERE
 
 ### Get All
 GET   http://localhost:3000/api/user/all_users
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzg1MDY1NDgzLCJleHAiOjE3ODUwNjkwODN9.ImC4tSJZ1xnHruk-DnL-lH8sYdAntIFqeKLfa7c_OSE
+Authorization: Bearer YOUR_TOKEN_HERE
 
 ### update user 
 PATCH    http://localhost:3000/api/user/updateByAdmin/2
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzg1MDY1NDgzLCJleHAiOjE3ODUwNjkwODN9.ImC4tSJZ1xnHruk-DnL-lH8sYdAntIFqeKLfa7c_OSE
+Authorization: Bearer YOUR_TOKEN_HERE
 Content-Type:application/json
 
 {
@@ -55,5 +55,4 @@ Content-Type:application/json
 
 ### Get  Current Role
 GET  http://localhost:3000/api/user/role
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODU1MTM1MDIsImV4cCI6MTc4NTUxNzEwMn0.Xj5QwBEk6a7kMkoVrhY3ati17TqPbuIyrSz9sxh0lxs
-
+Authorization: Bearer YOUR_TOKEN_HERE

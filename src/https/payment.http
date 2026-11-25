@@ -1,5 +1,5 @@
 Post http://localhost:3000/api/paymentinfo/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODUwOTAzMjIsImV4cCI6MTc4NTA5MzkyMn0.0g-fwZ1lGIf_lw6vGrXupgy8wiQyJgseCidJpNDKJiQ
+Authorization: Bearer YOUR_TOKEN_HERE
 Content-Type:application/json
 
 {
@@ -9,7 +9,7 @@ Content-Type:application/json
 }
 ### update payment info
 PATCH  http://localhost:3000/api/paymentinfo/update
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODUwOTAzMjIsImV4cCI6MTc4NTA5MzkyMn0.0g-fwZ1lGIf_lw6vGrXupgy8wiQyJgseCidJpNDKJiQ
+Authorization: Bearer YOUR_TOKEN_HERE
 Content-Type:application/json
 
 {
@@ -19,12 +19,12 @@ Content-Type:application/json
 }
 ###  get Instractor Payment Info
 GET  http://localhost:3000/api/paymentinfo/info/3
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODUwOTAzMjIsImV4cCI6MTc4NTA5MzkyMn0.0g-fwZ1lGIf_lw6vGrXupgy8wiQyJgseCidJpNDKJiQ
+Authorization: Bearer YOUR_TOKEN_HERE
 
 ### GET MY PAYMENT INFO 
 GET  http://localhost:3000/api/paymentinfo/my
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODUwOTAzMjIsImV4cCI6MTc4NTA5MzkyMn0.0g-fwZ1lGIf_lw6vGrXupgy8wiQyJgseCidJpNDKJiQ
+Authorization: Bearer YOUR_TOKEN_HERE
 
 ### Get All Payments for admin 
 GET  http://localhost:3000/api/paymentinfo/all
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzg1MDkzNzIzLCJleHAiOjE3ODUwOTczMjN9.2f00pUF_pfhkWjo3ts6nY0dKl2t_MDqEPukmY_KFyOs
+Authorization: Bearer YOUR_TOKEN_HERE

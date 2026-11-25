@@ -51,7 +51,7 @@ export class QuizAttemptController {
     return this.attemptService.getQuestions(attemptId, payload.id);
   }
 
-  @Roles(UserRoles.INSTRACTOR)
+  @Roles(UserRoles.INSTRACTOR, UserRoles.ADMIN)
   @UseGuards(AuthGuard, Roleguard)
   @Get('exam/:quizId/results')
   examResults(
@@ -60,6 +60,6 @@ export class QuizAttemptController {
     @Query('limit', new DefaultValuePipe(20), new ParseIntPipe()) limit: number,
     @Payload() payload: paylodType.PayloadType,
   ) {
-    return this.attemptService.getExamResults(quizId, payload.id, page, limit);
+    return this.attemptService.getExamResults(quizId, payload.id, page, limit, payload.role === UserRoles.ADMIN);
   }
 }
