@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { SectionDto } from './dtos/section.dto';
+import { UpdateSectionDto } from './dtos/update.dto';
 import { Payload } from 'src/common/Decorators/payload.decorator';
 import * as paylodType from 'src/utils/types/paylod.type';
 import { Roles } from 'src/common/Decorators/role.decorator';
@@ -33,7 +34,7 @@ export class SectionController {
     @Patch('update/:id')
     @Roles(UserRoles.INSTRACTOR)
     @UseGuards(AuthGuard,Roleguard)
-    update(@Param('id',new ParseIntPipe) id:number,@Body() body:SectionDto,@Payload() payload:paylodType.PayloadType){
+    update(@Param('id',new ParseIntPipe) id:number,@Body() body:UpdateSectionDto,@Payload() payload:paylodType.PayloadType){
     return  this.sectionService.updateSection(body,id,payload.id);
     }
 

@@ -2,14 +2,14 @@ import { CourseEntity } from "src/course/course.entity";
 import { UserEntity } from "src/User/user.entity";
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
 import { EnrollmentStatus } from "src/utils/enums/enroll.enum";
-import {  Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import {  Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity({name:'enrollments'})
 export class EnrollmentEntity{
     @PrimaryGeneratedColumn()
     id!:number;
 
-      @UpdateDateColumn({type:'timestamp',default:()=>CURRENT_TIMESTAMP,nullable:true})
+      @CreateDateColumn({type:'timestamp',default:()=>CURRENT_TIMESTAMP,nullable:true})
       enrolledAt!:Date
       
       @Column({

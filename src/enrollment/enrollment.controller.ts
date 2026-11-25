@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
 import { Payload } from 'src/common/Decorators/payload.decorator';
 import * as paylodType from 'src/utils/types/paylod.type';
 import { EnrollmentService } from './enrollment.service';
@@ -16,8 +16,8 @@ export class EnrollmentController {
     @Roles(UserRoles.STUDENT)
     @UseGuards(AuthGuard, Roleguard)
     getEnrolledCourses(@Payload() payload: paylodType.PayloadType,@Query('status') status:EnrollmentStatus) {
-        console.log(payload);
-        return this.enrollService.getStudentCourses(payload.id);
+        if(status!==undefined&&!Object.values(EnrollmentStatus).includes(status)) throw new BadRequestException('Invalid status');
+        return this.enrollService.getStudentCourses(payload.id,status);
     }
 
 
@@ -25,7 +25,6 @@ export class EnrollmentController {
     @Roles(UserRoles.STUDENT)
     @UseGuards(AuthGuard, Roleguard)
     getSuggestd(@Payload() payload: paylodType.PayloadType) {
-     console.log(payload);
     return this.enrollService.getCommonCategory(payload.id);
     }
 

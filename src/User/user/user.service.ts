@@ -107,7 +107,8 @@ public async getInstractorInfo(id:number){
 const user=await this.userRepo.findOne({where:{id}});
 if(!user)  throw new NotFoundException('User Not Found');
 const {password ,...other}=user;
-const paymentInfo=await this.payment.getInsPatmentInfo(id);
+// payment info exists only for instructors who added it: students and new instructors get null, not a 404
+const paymentInfo=user.role===UserRoles.INSTRACTOR ? await this.payment.findInsPaymentInfo(id) : null;
 return {personalInfo:other,paymentInfo};
 }
 
