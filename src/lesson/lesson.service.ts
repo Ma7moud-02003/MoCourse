@@ -1,3 +1,4 @@
+import { assertPdfFile } from 'src/utils/upload-validation';
 import { BadRequestException, ForbiddenException, forwardRef, Inject, Injectable,
 NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -148,7 +149,7 @@ export class LessonService {
                 break
             }
             case LessonType.PDF: {
-                if (file.mimetype !== 'application/pdf') throw new BadRequestException('This lessen type acccept only Pdf')
+                assertPdfFile(file);
                 resulte = await this.cloudinaryService.uploadFile(file, 'course/pdfs', 'raw');
                 lesson.pdfUrl = resulte.secure_url;
                 lesson.pdfPublicId = resulte.public_id;
