@@ -5,6 +5,7 @@ import { EntityManager, Repository } from 'typeorm';
 import { CourseEntity } from 'src/course/course.entity';
 import { CourseService } from 'src/course/course.service';
 import { EnrollmentStatus } from 'src/utils/enums/enroll.enum';
+import { UserRoles } from 'src/utils/enums/userRole.enum';
 import { CertificateService } from 'src/certificate/certificate.service';
 import { NotificationType } from 'src/utils/enums/notification.enum';
 import { NotificationsService } from 'src/notifications/notifications.service';
@@ -111,6 +112,19 @@ const course=await this.courseService.getSingleCourse(courseId);
 if(course.Instractor.id!==insId) throw new NotFoundException('Student not found in this course');
 const enrolled=await this.verifyStudentEnrollment(studentId,courseId);
 if(!enrolled) throw new NotFoundException('Student not found in this course');
+ }
+
+ /**
+  * Roster of a course: an admin sees every course, an instructor only their own.
+  * Someone else's course gives the same 404 as a course that does not exist.
+  */
+ public async getCourseStudentsFor(courseId:number,userId:number,role?:UserRoles){
+if(!courseId) throw new BadRequestException();
+if(role!==UserRoles.ADMIN){
+const course=await this.courseService.getSingleCourse(courseId);
+if(course.Instractor.id!==userId) throw new NotFoundException('Course not found with this id');
+}
+return await this.getCourseStudents(courseId);
  }
 
  /**
