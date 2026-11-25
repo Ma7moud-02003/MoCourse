@@ -31,7 +31,8 @@ export class CertificateCourseFk1764000000003 implements MigrationInterface {
       [TABLE],
     );
     const courseFk = fks.find((f) => /^FOREIGN KEY \("courseId"\)/.test(f.def));
-    const pointsAtCourses = !!courseFk && courseFk.def.includes('REFERENCES "courses"');
+    // pg_get_constraintdef quotes identifiers only when needed: REFERENCES courses(id), not "courses"
+    const pointsAtCourses = !!courseFk && /REFERENCES "?courses"?\(/.test(courseFk.def);
     const haveUnique = await queryRunner.query(`SELECT 1 FROM pg_constraint WHERE conname = $1`, [UNIQUE_NAME]);
 
     if (pointsAtCourses && haveUnique.length) return; // already in the target state
@@ -45,7 +46,7 @@ export class CertificateCourseFk1764000000003 implements MigrationInterface {
       throw new Error(
         `${TABLE} has ${rows.length} row(s) written while "courseId" referenced users(id): ${list}. ` +
           `A value that matches a course id does not prove it was meant as one, so this migration will not guess. ` +
-          `Nothing was changed. Review these rows, fix or remove them yourself, then run the migration again.`,
+          `Nothing was changed. Review and reconcile these rows, then run the migration again.`,
       );
     }
 
