@@ -1,5 +1,5 @@
 Post http://localhost:3000/api/lesson
-Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODU0NTM1OTcsImV4cCI6MTc4NTQ1NzE5N30.AiKS93DHq5ITWxp3tsVgY7hfhofBPQscgU0fHJG9trY
+Authorization:Bearer YOUR_TOKEN_HERE
 Content-Type:application/json
 
 {
@@ -12,7 +12,7 @@ Content-Type:application/json
 
 ### Update lesson
 PATCH  http://localhost:3000/api/lesson/update/3
-Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODU0NTM1OTcsImV4cCI6MTc4NTQ1NzE5N30.AiKS93DHq5ITWxp3tsVgY7hfhofBPQscgU0fHJG9trY
+Authorization:Bearer YOUR_TOKEN_HERE
 Content-Type:application/json
 
 {
@@ -21,7 +21,7 @@ Content-Type:application/json
 }
 ### get section lesson details
 Get  http://localhost:3000/api/lesson/details/3
-Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3OTA5MzMyMjksImV4cCI6MTc5MDk2OTIyOX0.h1gkxla23pJnjCU1e2ZkJnTrFOtUNckgNkZXIXbVMVk
+Authorization:Bearer YOUR_TOKEN_HERE
 ### get all lesson of section
 Get  http://localhost:3000/api/lesson/lessons/1
-Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3OTA4NDMyODAsImV4cCI6MTc5MDg3OTI4MH0.SQzfbosSW0yh_lPOTcks1ieCLIB8hcQdsulwoSCFD4o
+Authorization:Bearer YOUR_TOKEN_HERE
