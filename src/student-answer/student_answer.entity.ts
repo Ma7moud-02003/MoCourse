@@ -1,9 +1,10 @@
-import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, ManyToOne, Unique, PrimaryGeneratedColumn } from "typeorm";
 import { QuizAttemptEntity } from "../quiz-attempt/quiz-attemp.entity";
 import { QuestionEntity } from "../question/question.entity";
 import { ChoiceEntity } from "../choice/choise.entity";
 
 @Entity()
+@Unique(['attempt', 'question'])
 export class StudentAnswerEntity {
 
     @PrimaryGeneratedColumn()
