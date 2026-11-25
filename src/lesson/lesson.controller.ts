@@ -1,3 +1,4 @@
+import { BoundedTempUploadInterceptor, lessonUploadLimits, tempDiskStorage } from 'src/common/upload/temp-upload';
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { LessonService } from './lesson.service';
 import { CreateLessonDto } from './dtos/lessin.dto';
@@ -48,7 +49,7 @@ export class LessonController {
     @Patch('uploadFile/:id')
     @Roles(UserRoles.INSTRACTOR)
     @UseGuards(AuthGuard, Roleguard)
-    @UseInterceptors(FileInterceptor('file'))
+    @UseInterceptors(BoundedTempUploadInterceptor, FileInterceptor('file', { storage: tempDiskStorage, limits: lessonUploadLimits }))
     upload(@Param('id', new ParseIntPipe) id: number, @Payload() payload: paylodType.PayloadType, @UploadedFile() file: Express.Multer.File) {
         return this.lessonServise.updateLesson_Upload(file, id, payload.id)
     }

@@ -1,3 +1,4 @@
+import { readFile } from 'fs/promises';
 import { assertPdfFile } from 'src/utils/upload-validation';
 import { BadRequestException, ForbiddenException, forwardRef, Inject, Injectable,
 NotFoundException, UnauthorizedException } from '@nestjs/common';
@@ -142,13 +143,22 @@ export class LessonService {
         switch (lesson.type) {
             case LessonType.VIDEO: {
                 if (!file.mimetype.startsWith('video/')) throw new BadRequestException('This lessen type acccept only Vido')
-                resulte = await this.cloudinaryService.uploadFile(file, 'course/vidoes', 'video');
-                lesson.videoUrl = resulte.secure_url;
-                lesson.videoPublicId = resulte.public_id;
-                lesson.duration = Math.round(resulte.duration)
+                if (file.path) {
+                    // disk-backed upload: streamed from the temp file, never fully in memory
+                    const video = await this.cloudinaryService.uploadVideoFromPath(file.path, 'course/vidoes');
+                    lesson.videoUrl = video.url;
+                    lesson.videoPublicId = video.publicId;
+                    lesson.duration = video.durationSeconds;
+                } else {
+                    resulte = await this.cloudinaryService.uploadFile(file, 'course/vidoes', 'video');
+                    lesson.videoUrl = resulte.secure_url;
+                    lesson.videoPublicId = resulte.public_id;
+                    lesson.duration = Math.round(resulte.duration)
+                }
                 break
             }
             case LessonType.PDF: {
+                if (file.path && !file.buffer) file = { ...file, buffer: await readFile(file.path) };
                 assertPdfFile(file);
                 resulte = await this.cloudinaryService.uploadFile(file, 'course/pdfs', 'raw');
                 lesson.pdfUrl = resulte.secure_url;
