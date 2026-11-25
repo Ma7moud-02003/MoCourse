@@ -111,6 +111,13 @@ const paymentInfo=await this.payment.getInsPatmentInfo(id);
 return {personalInfo:other,paymentInfo};
 }
 
+// role lookup without payment info: instructor info requires a payment_info row, which students never have
+public async getUserRole(id:number):Promise<UserRoles>{
+const user=await this.userRepo.findOne({where:{id},select:{id:true,role:true}});
+if(!user)  throw new NotFoundException('User Not Found');
+return user.role;
+}
+
 public getAllUsers():Promise<any[]>{
   
   return this.userRepo.find();
