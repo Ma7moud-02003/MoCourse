@@ -4,7 +4,7 @@ import { StorageEngine } from 'multer';
 import { createWriteStream, mkdirSync, promises as fs } from 'fs';
 import { join } from 'path';
 import { Observable, finalize } from 'rxjs';
-import { OWN_DIR_NAME, TEMP_MAX_AGE_MS, ownTmpDir, uploadConcurrency, uploadTmpRoot, videoMaxBytes } from './upload.config';
+import { OWN_DIR_NAME, ownTmpDir, uploadConcurrency, uploadTmpRoot, videoMaxBytes } from './upload.config';
 
 const PREFIX = 'upload-';
 
@@ -73,54 +73,82 @@ export class UploadSlots {
 
 export const lessonUploadSlots = new UploadSlots();
 
-async function removeQuietly(path?: string) {
-  if (!path) return;
-  try {
-    await fs.unlink(path);
-  } catch {
-    /* already gone */
+/** Files whose deletion failed even after retries. They count against the bound, see below. */
+export const stuckTempFiles = new Set<string>();
+
+/** Delete a temp file. Missing file is success. Other errors are retried, then reported as false. */
+async function removeFile(path: string, attempts = 3): Promise<boolean> {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      await fs.unlink(path);
+      return true;
+    } catch (e: any) {
+      if (e?.code === 'ENOENT') return true;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 20 * (i + 1)));
+    }
   }
+  return false;
 }
 
 /**
- * Put BEFORE FileInterceptor. It (1) takes one of a small, fixed number of upload slots or answers 503, so
- * temp disk use is at most slots x max file size, and (2) deletes the temp file on every exit: success,
- * validation error, provider failure, multer rejection, client abort.
+ * Put BEFORE FileInterceptor. It (1) takes one of a small, fixed number of upload slots or answers 503, and
+ * (2) deletes the temp file on every exit: success, validation error, provider failure, multer rejection,
+ * client abort.
+ * The slot is freed after the delete. If a delete keeps failing, the slot is still freed (otherwise a few
+ * bad files would block uploads forever) but the file is remembered in stuckTempFiles, logged, and retried on
+ * the next request. Disk bound per process: (slots + stuck files) x cap, and new uploads get 503 while
+ * stuck files >= slots, so the bound is at most 2 x slots x cap.
  */
 @Injectable()
 export class BoundedTempUploadInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const req = context.switchToHttp().getRequest();
-    const release = lessonUploadSlots.tryAcquire(uploadConcurrency());
+    const max = uploadConcurrency();
+    const retry = [...stuckTempFiles].map((p) => removeFile(p, 1).then((ok) => ok && stuckTempFiles.delete(p)));
+    void Promise.all(retry);
+    if (stuckTempFiles.size >= max) {
+      throw new HttpException('Upload storage needs attention, try again later', HttpStatus.SERVICE_UNAVAILABLE);
+    }
+    const release = lessonUploadSlots.tryAcquire(max);
     if (!release) {
       throw new HttpException('Too many uploads in progress, try again in a moment', HttpStatus.SERVICE_UNAVAILABLE);
     }
-    // the slot is freed only AFTER the temp file is deleted, so slots x cap really bounds live temp disk use
     return next.handle().pipe(
       finalize(() => {
-        const paths: string[] = [...(req.__tempUploadPaths ?? []), req.file?.path].filter(Boolean);
-        void Promise.all(paths.map((p) => removeQuietly(p))).finally(release);
+        const paths: string[] = [...new Set([...(req.__tempUploadPaths ?? []), req.file?.path].filter(Boolean))];
+        void Promise.all(
+          paths.map(async (p) => {
+            if (!(await removeFile(p))) {
+              stuckTempFiles.add(p);
+              console.error(`[upload] could not delete temp file ${p}; kept on the stuck list`);
+            }
+          }),
+        ).finally(release);
       }),
     );
   }
 }
 
-function processAlive(pid: number) {
+/** true only when the process is provably gone (ESRCH). EPERM or anything else counts as not dead. */
+function provablyDead(pid: number) {
   try {
     process.kill(pid, 0);
-    return true;
+    return false;
   } catch (e: any) {
-    return e?.code === 'EPERM'; // exists but not ours
+    return e?.code === 'ESRCH';
   }
 }
 
 /**
  * Remove leftovers of OTHER processes. Call once at startup. Never touches this process's own folder.
- * A foreign folder (p<pid>-<boot>) is removed when its process is gone, or when every file in it is older
- * than TEMP_MAX_AGE_MS (covers a reused process id, e.g. container restarts). A live process's active
- * upload keeps its file's modified time fresh, so it is not removed. Returns the number of folders removed.
+ * A foreign folder p<pid>-<boot> is removed ONLY when its process is provably dead (kill(pid,0) gives ESRCH).
+ * Age is never used: a live process may be in a long upload. A live, unknown (EPERM) or reused pid keeps its
+ * folder, so an orphan can stay on disk until that pid is gone. This is deliberate: leaving an orphan is
+ * safer than deleting an active file. On a shared or containerised host, pids are not comparable across
+ * hosts or containers, so use a separate UPLOAD_TMP_DIR per instance and clean orphans there by hand if
+ * needed. Returns the number of folders removed.
  */
-export async function sweepOldTempUploads(now = Date.now()) {
+export async function sweepOldTempUploads() {
   const root = uploadTmpRoot();
   let names: string[] = [];
   try {
@@ -132,18 +160,12 @@ export async function sweepOldTempUploads(now = Date.now()) {
   for (const name of names) {
     const m = /^p(\d+)-[0-9a-f]+$/.exec(name);
     if (!m || name === OWN_DIR_NAME) continue;
-    const dir = join(root, name);
+    if (!provablyDead(Number(m[1]))) continue;
     try {
-      const files = await fs.readdir(dir);
-      let newest = 0;
-      for (const f of files) newest = Math.max(newest, (await fs.stat(join(dir, f))).mtimeMs);
-      const stale = files.length === 0 || now - newest > TEMP_MAX_AGE_MS;
-      if (!processAlive(Number(m[1])) || stale) {
-        await fs.rm(dir, { recursive: true, force: true });
-        removed++;
-      }
+      await fs.rm(join(root, name), { recursive: true, force: true });
+      removed++;
     } catch {
-      /* ignore */
+      /* keep, retry at next start */
     }
   }
   return removed;
