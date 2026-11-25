@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, LessThanOrEqual, Repository } from 'typeorm';
 import { stableShuffle, seedOf } from './stable-shuffle';
 import { QuizAttemptEntity } from './quiz-attemp.entity';
+import { UserEntity } from 'src/User/user.entity';
 import { CourseEntity } from 'src/course/course.entity';
 import { QuizEntity } from 'src/quiz/quiz.entity';
 import { QuestionEntity } from 'src/question/question.entity';
@@ -60,7 +61,11 @@ export class QuizAttemptService {
     const outcome = await this.attemptRepo.manager.transaction(async (manager) => {
       // shared row lock: students starting together do not wait for each other,
       // but an instructor edit (exclusive lock) and a start never overlap
-      // course row first (shared), then the exam row: same order as course delete, so no deadlock
+      // user row first (shared): an account deletion (exclusive lock on the same row) cannot overlap with a start,
+      // so a start never hits a half-deleted user. Then the course row (shared), then the exam row: same order
+      // as course delete, so no deadlock. Account deletion only ever takes the user row first.
+      const userRow = await manager.findOne(UserEntity, { where: { id: studentId }, select: { id: true }, lock: { mode: 'pessimistic_read' } });
+      if (!userRow) throw new NotFoundException('Account not found');
       const courseRow = await manager.findOne(CourseEntity, { where: { id: quiz.course.id }, select: { id: true }, lock: { mode: 'pessimistic_read' } });
       if (!courseRow) throw new NotFoundException('Exam not found');
       const locked = await manager.findOne(QuizEntity, {
