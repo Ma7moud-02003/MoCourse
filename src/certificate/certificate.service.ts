@@ -1,10 +1,15 @@
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CertificateEntity } from './certificate.entity';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { NotificationType } from 'src/utils/enums/notification.enum';
+
+const STUDENT_COURSE_UNIQUE = 'UQ_certificates_student_course';
+const CERT_NUMBER_UNIQUE = 'UQ_9742ea65bce69db989c2e676936';
+const EXISTS_MESSAGE = 'الشهاده موجوده بالفعل';
+const MAX_NUMBER_ATTEMPTS = 5;
 
 @Injectable()
 export class CertificateService {
@@ -26,8 +31,13 @@ public async creatCertification(studentId:number,courseId:number,
 const existedCertificate=await this.certificateRepo.findOne({
     where:{student:{id:studentId},course:{id:courseId}}
 });
-if(existedCertificate) return {message:'الشهاده موجوده بالفعل'};
- const certificateNumber=`Mo-${randomBytes(4).toString('hex').toUpperCase()}`;
+if(existedCertificate) return {message:EXISTS_MESSAGE};
+
+// Two completions can pass the check above at the same time; the database unique rules decide.
+// A duplicate (student, course) save means the certificate already exists. A certificateNumber
+// collision just means: draw a new number and try again.
+for(let attempt=0;attempt<MAX_NUMBER_ATTEMPTS;attempt++){
+ const certificateNumber=`Mo-${randomBytes(6).toString('hex').toUpperCase()}`;
  const certificate=this.certificateRepo.create({
     courseTitle:courseTitle,
     certificateNumber,
@@ -35,17 +45,31 @@ if(existedCertificate) return {message:'الشهاده موجوده بالفعل
     course:{id:courseId},
     issuedAt:new Date(),
     completedAt
- })
- const cer=await this.certificateRepo.save(certificate);
-  //creating notification for instractor
-    const certificateId=cer.id; 
+ });
+ let cer:CertificateEntity;
+ try{
+   cer=await this.certificateRepo.save(certificate);
+ }catch(e){
+   if(e instanceof QueryFailedError && (e as {code?:string}).code==='23505'){
+     const constraint=(e as {constraint?:string}).constraint??'';
+     if(constraint===STUDENT_COURSE_UNIQUE||constraint.includes('studentId'))
+       return {message:EXISTS_MESSAGE};
+     if(constraint===CERT_NUMBER_UNIQUE||constraint.includes('certificateNumber'))
+       continue;
+   }
+   throw e;
+ }
+  //creating notification for the student
+    const certificateId=cer.id;
          await this.notifiService.creatNotification(
          certificateId,studentId,
          `اصدار شهاده`,
          `مبروك انتهائك من كورس ${courseTitle} تم اصدار شهاتك يمكنك  الان الاطلاع عليها `,
          NotificationType.CERTIFICATE
          )
-         
+ return cer;
+}
+throw new Error(`Could not generate a unique certificate number after ${MAX_NUMBER_ATTEMPTS} attempts`);
 }
 
 /**
