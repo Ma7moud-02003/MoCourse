@@ -139,7 +139,16 @@ export class CourseService {
                 const attempts = await manager.count(QuizAttemptEntity, { where: { quiz: { course: { id: courseId } } } });
                 if (attempts > 0) throw new ConflictException('Students already attempted an exam in this course, so it cannot be deleted');
             }
-            return await manager.remove(course);
+            // Other records (enrollments, payments, ...) still point at the course. The database refuses the
+            // delete for those; answer with a clear 409 instead of a raw 500. This does not delete anything extra.
+            try {
+                return await manager.remove(course);
+            } catch (e: any) {
+                if ((e?.code ?? e?.driverError?.code) === '23503') {
+                    throw new ConflictException('This course still has enrolled students or other linked records, so it cannot be deleted');
+                }
+                throw e;
+            }
         });
     }
 
