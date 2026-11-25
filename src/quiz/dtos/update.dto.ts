@@ -29,6 +29,7 @@ export class UpdateQuizDto {
   @IsOptional()
   @IsInt()
   @Min(1)
+  /** Informational only (minutes). The real deadline for everyone is the exam's closesAt; this value is not enforced. */
   timeLimit?: number;
 
   @IsOptional()
@@ -44,6 +45,7 @@ export class UpdateQuizDto {
   @IsOptional()
   @IsInt()
   @Min(1)
+  /** Stored for compatibility only. Exams allow ONE attempt per student, and the first result stands. This value is not used. */
   maxAttempts?: number;
 
   @IsOptional()
@@ -56,6 +58,7 @@ export class UpdateQuizDto {
 
   @IsOptional()
   @IsBoolean()
+  /** Stored for compatibility only. A student always sees the result after submitting (or after the exam closes). This value is not used. */
   showResultImmediately?: boolean;
 
   @IsOptional()
