@@ -10,7 +10,7 @@ export class ReviewEntity {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @Column({ length: 150 })
+    @Column({ length: 200 })
     comment!: string;
 
     @Column()
