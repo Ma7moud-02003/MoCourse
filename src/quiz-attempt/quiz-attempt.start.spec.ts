@@ -143,3 +143,13 @@ describe('QuizAttemptService.startAttempt', () => {
     expect(state.attempts[0].submitted).toBe(true);
   });
 });
+
+describe('start lock order (account deletion safety, no deadlock)', () => {
+  beforeEach(() => jest.useFakeTimers({ doNotFake: ['setTimeout', 'nextTick', 'setImmediate'] }).setSystemTime(new Date('2026-01-01T10:00:00Z')));
+  afterEach(() => jest.useRealTimers());
+  it('locks the user row first (shared), then the course (shared), then the exam (shared)', async () => {
+    const { service, state } = fakeAttemptDb() as any;
+    await service.startAttempt(10, 7);
+    expect(state.lockOrder.slice(0, 3)).toEqual(['user:pessimistic_read', 'course:pessimistic_read', 'quiz:pessimistic_read']);
+  });
+});
