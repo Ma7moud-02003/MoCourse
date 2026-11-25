@@ -14,6 +14,16 @@ import { EnrollmentService } from 'src/enrollment/enrollment.service';
 
 
 
+// undefined/empty -> undefined (leave unchanged); true/'true'/'1' -> true; false/'false'/'0' -> false
+export function parsePublished(value: unknown): boolean | undefined {
+    if (value === undefined || value === null || value === '') return undefined;
+    if (typeof value === 'boolean') return value;
+    const v = String(value).trim().toLowerCase();
+    if (v === 'true' || v === '1') return true;
+    if (v === 'false' || v === '0') return false;
+    throw new BadRequestException('isPublished must be true or false');
+}
+
 @Injectable()
 export class CourseService {
     constructor(
@@ -107,7 +117,8 @@ export class CourseService {
         course.discountPrice = updateDto.discountPrice ?? course.discountPrice;
         course.covers = updateDto.covers ?? course.covers;
         course.requirements = updateDto.requirements ?? course.requirements;
-        course.isPublished = Boolean(updateDto.isPublished) ?? course.isPublished;
+        // keep the current state unless the request really sends one (multipart bodies send strings)
+        course.isPublished = parsePublished(updateDto.isPublished) ?? course.isPublished;
         course.category.id = updateDto.categoryId ?? course.category.id
         return await this.courseRepo.save(course);
     }
@@ -157,8 +168,10 @@ export class CourseService {
      * @returns all courses
      */
     public async getAllCourses(title: string, categoryId?: number,
-        minPrice?: number, maxPrice?: number, level?: CourseLevel) {
+        minPrice?: number, maxPrice?: number, level?: CourseLevel, role?: UserRoles) {
         const query = {
+            // drafts are hidden from the public list; admin sees everything
+            ...(role === UserRoles.ADMIN ? {} : { isPublished: true }),
             ...(title ? { title: Like(`%${title}%`) } : {}),
             ...(minPrice && maxPrice ? { price: Between(minPrice, maxPrice) } : {}),
             ...(categoryId ? { category: { id: categoryId } } : {}),
@@ -207,7 +220,7 @@ export class CourseService {
      * @param courseId 
      * @returns  Course details
      */
-    public async getCourseDetails(courseId: number,userId?:number) {
+    public async getCourseDetails(courseId: number,userId?:number,role?:UserRoles,enforceVisibility:boolean=false) {
         if (!courseId) throw new NotFoundException();
         let isEnrolled:boolean=false;
         let canAccess:boolean=false;
@@ -240,6 +253,10 @@ export class CourseService {
             isEnrolled=await this.enrollService.verifyStudentEnrollment(userId,courseId);
         }
         
+        // a draft course is visible only to its owner, an admin, or a student who already enrolled
+        if (enforceVisibility && course.isPublished === false && !canAccess && !isEnrolled && role !== UserRoles.ADMIN) {
+            throw new NotFoundException();
+        }
         // draft exams are visible only to the course owner
         const quizzes = (course.quizzes ?? []).filter((q) => canAccess || q.isPublished);
         return {...course,quizzes,isEnrolled,canAccess};
@@ -259,9 +276,22 @@ export class CourseService {
 
    public async getSuggestedCourses(catId?:number){
   const suggestedCourses=await this.courseRepo.find({
-    where:{category:{id:catId}},take:5
+    where:{category:{id:catId},isPublished:true},take:5
   })
   return suggestedCourses;
+   }
+
+   /**
+    * true when this user may see the course content listing: published course, its owner, an admin,
+    * or a student who already enrolled (kept after the teacher unpublishes)
+    */
+   public async canViewCourse(courseId:number,userId?:number,role?:UserRoles){
+     const course = await this.getSingleCourse(courseId);
+     if(course.isPublished!==false) return true;
+     if(role===UserRoles.ADMIN) return true;
+     if(!userId) return false;
+     if(course.Instractor.id==userId) return true;
+     return await this.enrollService.verifyStudentEnrollment(userId,courseId);
    }
 
    public async verifyingInstractorOwnTheCourse(insId:number,courseId:number){

@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 import { SectionDto } from './dtos/section.dto';
 import { CourseService } from 'src/course/course.service';
 import { UpdateSectionDto } from './dtos/update.dto';
+import { UserRoles } from 'src/utils/enums/userRole.enum';
 import { EnrollmentService } from 'src/enrollment/enrollment.service';
 
 @Injectable()
@@ -40,13 +41,15 @@ export class SectionService {
   }
 
 // get all sections 
-async getCourseSections(courseId:number,userId:number,pageNumber?:number){
+async getCourseSections(courseId:number,userId:number,pageNumber?:number,role?:UserRoles){
   if(!courseId) throw new BadRequestException();
+  // a draft course's sections are visible only to its owner, an admin, or an already enrolled student
+  if(!(await this.courseService.canViewCourse(courseId,userId,role))) throw new NotFoundException('Course not found');
   const pageNum=pageNumber??0;
   const sectionsPerPage=10;
 const sections= await this.sectinRepo.find({
   where:{course:{id:courseId}}
-  ,skip:sectionsPerPage*(pageNum-1),
+  ,skip:sectionsPerPage*Math.max(pageNum-1,0),
     take:sectionsPerPage
 });
 let isEnrolled:boolean=false;

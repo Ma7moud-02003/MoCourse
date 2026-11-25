@@ -35,8 +35,9 @@ export class CourseController {
     @Query('categoryId') categoryId: string,
     @Query('minPrice') minPrice: string,
     @Query('maxPrice') maxPrice: string,
+    @Payload() payload: paylodType.PayloadType,
   ) {
-    return this.courseServise.getAllCourses(title, parseInt(categoryId), parseInt(minPrice), parseInt(maxPrice), level);
+    return this.courseServise.getAllCourses(title, parseInt(categoryId), parseInt(minPrice), parseInt(maxPrice), level, payload.role);
   }
 
   @Get('ins/myCourses')
@@ -67,7 +68,7 @@ export class CourseController {
   @Get('details/:id')
   @UseGuards(AuthGuard)
   getCourseDetails(@Param('id', new ParseIntPipe()) id: number,@Payload() payload:paylodType.PayloadType) {
-    return this.courseServise.getCourseDetails(id,payload.id);
+    return this.courseServise.getCourseDetails(id,payload.id,payload.role,true);
   }
 
 

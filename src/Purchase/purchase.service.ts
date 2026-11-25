@@ -42,6 +42,8 @@ export class PurchaseService {
         if (!studentId || !courseId) throw new NotFoundException('Student Id Or Course Id Is Not Found')
         const course = await this.courseServise.getSingleCourse(courseId);
         if (!course) throw new NotFoundException('Course does not exist');
+        // a draft course cannot be bought
+        if (course.isPublished === false) throw new NotFoundException('Course does not exist');
         const exist = await this.purchaseRepo.findOne({
             where: {
                 course: { id: courseId },

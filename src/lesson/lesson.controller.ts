@@ -35,13 +35,13 @@ export class LessonController {
     @Get('lessons/:id')
     @UseGuards(AuthGuard)
     getLessons(@Param('id', new ParseIntPipe) id: number, @Payload() payload: paylodType.PayloadType) {
-        return this.lessonServise.getSectiionLessons(id, payload.id);
+        return this.lessonServise.getSectiionLessons(id, payload.id, payload.role);
     }
 
     @Get('details/:id')
     @UseGuards(AuthGuard)
     getSingleLesson(@Param('id', new ParseIntPipe) id: number, @Payload() payload: paylodType.PayloadType) {
-        return this.lessonServise.getLesson(id, payload.id);
+        return this.lessonServise.getLesson(id, payload.id, payload.role);
     }
 
 
@@ -63,4 +63,3 @@ export class LessonController {
 
 
 }
-

@@ -9,6 +9,7 @@ import { SectionService } from 'src/section/section.service';
 import { CourseService } from 'src/course/course.service';
 import { UpdateLessonDto } from './dtos/updateLesson.dto';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
+import { UserRoles } from 'src/utils/enums/userRole.enum';
 import { LessonType } from 'src/utils/enums/lessonType.enum';
 import { UploadApiResponse } from 'cloudinary';
 import { EnrollmentService } from 'src/enrollment/enrollment.service';
@@ -47,15 +48,20 @@ export class LessonService {
     }
 
 
-    public async getLesson(lessonId: number, userId: number) {
+    public async getLesson(lessonId: number, userId: number, role?: UserRoles) {
         if (!lessonId || !userId) throw new BadRequestException();
         const lesson = await this.lessonRepo.findOne({
             where: { id: lessonId }, relations: { section: true }, select: { section: { id: true } }
         });
-        if(lesson?.isPreview) return lesson;
         if (!lesson) throw new NotFoundException('Lesson Not Found');
         const sectionId = lesson?.section.id;
         if (!sectionId) throw new BadRequestException('No Section Is Found To This Lesson');
+        // a draft course's lessons (even previews) are visible only to its owner or an already enrolled student
+        const sectionForCourse = await this.sectionService.getSection(sectionId);
+        const lessonCourseId = sectionForCourse?.course.id;
+        if (!lessonCourseId) throw new BadRequestException();
+        if (!(await this.courseService.canViewCourse(lessonCourseId, userId, role))) throw new NotFoundException('Lesson Not Found');
+        if (lesson.isPreview) return lesson;
         const isUserOwnTheCourse = await this.verifyInstractorPeriorty(sectionId, userId);
         if (isUserOwnTheCourse) return await this.lessonRepo.findOne({ where: { id: lessonId } });
         const section = await this.sectionService.getSection(sectionId);
@@ -70,8 +76,12 @@ export class LessonService {
     }
 
 
-    public async getSectiionLessons(sectionId: number, userId: number) {
+    public async getSectiionLessons(sectionId: number, userId: number, role?: UserRoles) {
         if (!sectionId || !userId) throw new BadRequestException();
+        const listSection = await this.sectionService.getSection(sectionId);
+        if (!listSection) throw new BadRequestException('No section Provided');
+        // a draft course's lesson list is visible only to its owner or an already enrolled student
+        if (!(await this.courseService.canViewCourse(listSection.course.id, userId, role))) throw new NotFoundException('Section not found');
         const vrified = await this.verifyInstractorPeriorty(sectionId, userId);
         if (vrified) {
             return await this.lessonRepo.find({
