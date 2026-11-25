@@ -32,15 +32,15 @@ export class QuizAttemptEntity {
     })
     attemptNumber!: number;
 
-    @CreateDateColumn({type:"timestamp",default:()=>CURRENT_TIMESTAMP})
+    @CreateDateColumn({type:"timestamptz",default:()=>CURRENT_TIMESTAMP})
     startedAt!: Date;
     
     // deadline = startedAt + the exam timeLimit; the server sets it when the attempt starts
-    @Column({type:"timestamp"})
+    @Column({type:"timestamptz"})
     expiresAt!: Date;
     
     // empty until the student submits; the server sets it once at submit
-    @Column({type:"timestamp",nullable:true})
+    @Column({type:"timestamptz",nullable:true})
     submittedAt!: Date | null;
 
     @ManyToOne(() => UserEntity,  user => user.quizAttempts,{onDelete: 'CASCADE'})
