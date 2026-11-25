@@ -1,5 +1,5 @@
 Post http://localhost:3000/api/section
-Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODYxOTcxMDgsImV4cCI6MTc4NjIwMDcwOH0.l3_wf3sIIUs_JtH0ixT7OPpwCIxLfoBf3R8fDqDPBi0
+Authorization:Bearer YOUR_TOKEN_HERE
 Content-Type:application/json
 
 {
@@ -9,10 +9,10 @@ Content-Type:application/json
 }
 ### getting all sections 
 Get http://localhost:3000/api/section/sections/5?pageNumber=3
-Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3OTA4NDMyODAsImV4cCI6MTc5MDg3OTI4MH0.SQzfbosSW0yh_lPOTcks1ieCLIB8hcQdsulwoSCFD4o
+Authorization:Bearer YOUR_TOKEN_HERE
 ###
 PATCH  http://localhost:3000/api/section/update/1
-Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzg1MzU3ODA3LCJleHAiOjE3ODUzNjE0MDd9.U4rcVETqynIyA8LZc75TfeFXEuCWAM0eBRR38DOeVDc
+Authorization:Bearer YOUR_TOKEN_HERE
 Content-Type:application/json
 
 {
