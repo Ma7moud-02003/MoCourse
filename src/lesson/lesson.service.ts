@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, forwardRef, Inject, Injectable
 NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessonsEntity } from './lessons.entity';
+import { assertNoExamAttempts } from 'src/quiz/exam-guard';
 import { Repository } from 'typeorm';
 import { CreateLessonDto } from './dtos/lessin.dto';
 import { SectionService } from 'src/section/section.service';
@@ -111,7 +112,11 @@ export class LessonService {
         })
         if (!lesson) throw new NotFoundException('Lesson Not Found');
         await this.assertInstractorOwnsSection(lesson.section.id, insId);
-        return await this.lessonRepo.remove(lesson);
+        // exams linked to a lesson (legacy data) are deleted with it: refuse if a student attempted one
+        return await this.lessonRepo.manager.transaction(async (manager) => {
+            await assertNoExamAttempts(manager, { lesson: { id: lessonId } }, 'Students already attempted an exam in this lesson, so it cannot be deleted');
+            return await manager.remove(lesson);
+        });
     }
 
     // uploade Part 
