@@ -2,14 +2,14 @@ import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { CourseService } from './course.service';
 import { UserRoles } from 'src/utils/enums/userRole.enum';
 
-function build(opts: { exams: number[]; attempts: number; ownerId?: number }) {
+function build(opts: { exams: number[]; attempts: number; ownerId?: number; removeError?: any }) {
   const calls: string[] = [];
   const course = { id: 5, Instractor: { id: opts.ownerId ?? 3 } };
   const manager: any = {
     findOne: jest.fn(async () => { calls.push('lock-course'); return { id: 5 }; }),
     find: jest.fn(async (_e: any, o: any) => { calls.push(o.lock ? 'lock-exams' : 'list-exams'); return opts.exams.map((id) => ({ id })); }),
     count: jest.fn(async () => { calls.push('count-attempts'); return opts.attempts; }),
-    remove: jest.fn(async (c: any) => { calls.push('remove'); return c; }),
+    remove: jest.fn(async (c: any) => { calls.push('remove'); if (opts.removeError) throw opts.removeError; return c; }),
   };
   const courseRepo: any = { manager: { transaction: (fn: any) => fn(manager) } };
   const service = new CourseService(courseRepo, {} as any, {} as any);
@@ -49,5 +49,13 @@ describe('CourseService.deleteCourse protects student results', () => {
     await expect(service.deleteCourse(5, 99, UserRoles.INSTRACTOR)).rejects.toBeInstanceOf(UnauthorizedException);
     expect(manager.find).not.toHaveBeenCalled();
     expect(manager.findOne).not.toHaveBeenCalled();
+  });
+
+  it('a foreign-key refusal (enrolled students etc.) becomes a clear 409, other errors pass through', async () => {
+    const a = build({ exams: [], attempts: 0, removeError: { code: '23503' } });
+    await expect(a.service.deleteCourse(5, 3, UserRoles.INSTRACTOR)).rejects.toBeInstanceOf(ConflictException);
+    const boom = new Error('db down');
+    const b = build({ exams: [], attempts: 0, removeError: boom });
+    await expect(b.service.deleteCourse(5, 3, UserRoles.INSTRACTOR)).rejects.toBe(boom);
   });
 });
