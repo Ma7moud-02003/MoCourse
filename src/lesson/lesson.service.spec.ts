@@ -21,7 +21,7 @@ function setup() {
 }
 
 describe('lesson ownership', () => {
-  const file: any = { mimetype: 'application/pdf', buffer: Buffer.from('x') };
+  const file: any = { mimetype: 'application/pdf', buffer: Buffer.from('%PDF-1.4 x') };
   it('another instructor cannot add a lesson to the course', async () => {
     const { svc, lessonRepo } = setup();
     await expect(svc.addLesson({ title: 't', sectionId: 2, type: LessonType.PDF } as any, OTHER)).rejects.toThrow(ForbiddenException);

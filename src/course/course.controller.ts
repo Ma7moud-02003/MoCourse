@@ -1,3 +1,5 @@
+import { MAX_THUMBNAIL_BYTES } from 'src/utils/upload-validation';
+// multer rejects a file that reaches the limit, so the limit is cap + 1 byte to allow exactly the cap.
 import { Body, Controller, Delete, Get, HttpStatus, Param, ParseIntPipe, Patch, Post, Query, Req, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { CouurseDto } from './dtos/course.dto';
 import { Payload } from 'src/common/Decorators/payload.decorator';
@@ -21,7 +23,7 @@ export class CourseController {
   }
   @Roles(UserRoles.INSTRACTOR)
   @UseGuards(AuthGuard, Roleguard)
-  @UseInterceptors(FileInterceptor('thumbnail'))
+  @UseInterceptors(FileInterceptor('thumbnail', { limits: { fileSize: MAX_THUMBNAIL_BYTES + 1 } }))
   @Post('')
   add(@Body() body: CouurseDto, @Payload() payload: paylodType.PayloadType, @UploadedFile() file: any) {
     return this.courseServise.addNewCourse(body, file, payload.id)
@@ -54,7 +56,7 @@ export class CourseController {
   // Update Course details by instractor
   @Roles(UserRoles.INSTRACTOR, UserRoles.ADMIN)
   @UseGuards(AuthGuard, Roleguard)
-  @UseInterceptors(FileInterceptor('thumbnail'))
+  @UseInterceptors(FileInterceptor('thumbnail', { limits: { fileSize: MAX_THUMBNAIL_BYTES + 1 } }))
   @Patch('update/:id')
   update(@Param('id', new ParseIntPipe) id: number, @Body() body: any,
     @Payload() payload: paylodType.PayloadType, @UploadedFile() file: any) {

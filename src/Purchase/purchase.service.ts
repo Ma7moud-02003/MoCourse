@@ -1,3 +1,4 @@
+import { assertImageFile } from 'src/utils/upload-validation';
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PurchaseEntity } from './purchase.entity';
@@ -109,6 +110,7 @@ export class PurchaseService {
         if (!purchase) throw new NotFoundException('Purchase Not Fond');
         const purchaseStatus = purchase.status;
         if (purchaseStatus == StatusEnum.PAID || purchaseStatus == StatusEnum.WAITING_APPROVAL) throw new NotFoundException('Purchase Already Paid');
+        assertImageFile(file, 'Payment screenshot');
         const image = await this.cloudService.uploadFile(file, 'course/images', 'image');
         console.log(purchase.user.id);
         if (purchase.user.id != userId) throw new UnauthorizedException('You Can not Access That Purchase')

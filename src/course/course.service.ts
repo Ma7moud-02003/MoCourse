@@ -1,3 +1,4 @@
+import { assertImageFile } from 'src/utils/upload-validation';
 import { BadRequestException, ConflictException, forwardRef, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CouurseDto } from './dtos/course.dto';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
@@ -45,6 +46,7 @@ export class CourseService {
      */
 
     public async addNewCourse(dto: CouurseDto, file: Express.Multer.File, insId: number) {
+        assertImageFile(file, 'Thumbnail');
         const image = await this.cloudinaryServive.uploadFile(file, 'course/images', 'image');
         const course = this.courseRepo.create({
             title: dto.title,
@@ -105,6 +107,7 @@ export class CourseService {
             if (course.Instractor.id != insId) throw new UnauthorizedException('Access Denied You are not allowed to access this course');
         }
         if (file) {
+            assertImageFile(file, 'Thumbnail');
             const image = await this.cloudinaryServive.uploadFile(file, 'course/images', 'image');
             course.thumbnail = image.secure_url ?? course.thumbnail;
             course.publicId = image.public_id ?? course.publicId
