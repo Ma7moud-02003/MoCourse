@@ -23,4 +23,11 @@ describe('QuizAttemptEntity timestamps', () => {
   it('startedAt still records creation time', () => {
     expect((col('startedAt') as any).mode).toBe('createDate');
   });
+
+  it('has a partial index on expiresAt for unsubmitted attempts (used by the expiry sweep)', () => {
+    const idx: any = getMetadataArgsStorage().indices.find((x: any) => x.target === QuizAttemptEntity && x.name === 'IDX_quiz_attempt_open_expiry');
+    expect(idx).toBeDefined();
+    expect(idx.columns).toEqual(['expiresAt']);
+    expect(idx.where).toBe('"submitted" = false');
+  });
 });
