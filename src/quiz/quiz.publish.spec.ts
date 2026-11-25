@@ -1,8 +1,8 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { QuizService } from './quiz.service';
 import { fakeExamDb } from './exam-fake-db-spec';
 
-function build(opts: { published: boolean; questionIds: number[] }) {
+function build(opts: { published: boolean; questionIds: number[]; attempts?: number }) {
   const db = fakeExamDb(opts);
   const courseService: any = {
     getCourseDetails: jest.fn().mockResolvedValue({ id: 5 }),
@@ -57,5 +57,29 @@ describe('QuizService publish rules', () => {
     const { service, state } = build({ published: false, questionIds: [1] });
     await expect(service.updateQuiz(10, 99, { isPublished: true } as any)).rejects.toThrow();
     expect(state.quiz.isPublished).toBe(false);
+  });
+});
+
+describe('exam settings are frozen once a student started', () => {
+  it('rejects every kind of update when an attempt exists and saves nothing', async () => {
+    const { service, state } = build({ published: true, questionIds: [1], attempts: 1 });
+    const before = { ...state.quiz };
+    for (const patch of [{ title: 'New' }, { passMark: 10 }, { timeLimit: 5 }, { maxAttempts: 3 }, { shuffleQuestions: true },
+      { shuffleChoices: true }, { showResultImmediately: true }, { isPublished: false }, { description: 'x' }, { instructions: 'x' }]) {
+      await expect(service.updateQuiz(10, 3, patch as any)).rejects.toBeInstanceOf(ConflictException);
+    }
+    expect(state.quiz).toEqual(before);
+  });
+
+  it('still allows updates while there are no attempts', async () => {
+    const { service, state } = build({ published: true, questionIds: [1], attempts: 0 });
+    await service.updateQuiz(10, 3, { timeLimit: 5, passMark: 0 } as any);
+    expect(state.quiz.timeLimit).toBe(5);
+    expect(state.quiz.passMark).toBe(0);
+  });
+
+  it('non-owner still gets Forbidden, not Conflict', async () => {
+    const { service } = build({ published: true, questionIds: [1], attempts: 1 });
+    await expect(service.updateQuiz(10, 99, { title: 'x' } as any)).rejects.not.toBeInstanceOf(ConflictException);
   });
 });
