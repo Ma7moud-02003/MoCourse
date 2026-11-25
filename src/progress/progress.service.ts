@@ -155,7 +155,7 @@ export class ProgressService {
             .where('course.instractorId=:insId', { insId }).andWhere('progress.completed=:completed', {
                 completed: true
             }).select('lesson.id', 'lessonId').addSelect('lesson.title', 'lessonTitle').addSelect('COUNT(progress.id)', 'watchedCount')
-            .groupBy('lesson.id').limit(1).orderBy('"watchedCount"', 'DESC').getRawOne();
+            .groupBy('lesson.id').limit(1).orderBy('"watchedCount"', 'DESC').addOrderBy('lesson.id', 'ASC').getRawOne();
         return mostWatched;
     }
 
@@ -166,7 +166,7 @@ export class ProgressService {
      */
     public async getLastLessonForStudnt(studentId:number){
      const lastLesson =await this.progressRepo.findOne({
-        where:{user:{id:studentId}},order:{updatedAt:'ASC'},relations:{lesson:true},select:{lesson:{
+        where:{user:{id:studentId}},order:{updatedAt:'DESC',id:'DESC'},relations:{lesson:true},select:{lesson:{
             title:true,id:true,order:true
         }}
      }

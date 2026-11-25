@@ -261,7 +261,8 @@ export class PurchaseService {
             .where('course.instractorId=:instractorId', { instractorId })
             .andWhere('purchase.status=:status', { status: StatusEnum.PAID })
             .select('SUM(purchase.amount)', 'totalAmount').getRawOne();
-        return total.totalAmount;
+        // SUM is NULL when there are no paid purchases: report "0" (same string type as a non-empty SUM, which pg returns as text)
+        return String(total?.totalAmount ?? 0);
 
     }
 
@@ -271,7 +272,7 @@ export class PurchaseService {
             .andWhere('purchase.status=:status', {
                 status: StatusEnum.PAID
             }).select('course.id', 'courseId').addSelect('course.title', 'courseTitle').addSelect('course.price', 'coursePrice')
-            .addSelect('COUNT(purchase.id)', 'purchaseCount').groupBy('course.id').addGroupBy('course.title').orderBy('"purchaseCount"', 'DESC').limit(1).getRawOne();
+            .addSelect('COUNT(purchase.id)', 'purchaseCount').groupBy('course.id').addGroupBy('course.title').orderBy('"purchaseCount"', 'DESC').addOrderBy('course.id', 'ASC').limit(1).getRawOne();
         return mostCoursePurshaced;
     }
 
