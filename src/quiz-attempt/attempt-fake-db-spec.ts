@@ -1,4 +1,5 @@
 // In-memory stand-in for the DB used by the attempt tests (no real Postgres).
+import { UserEntity } from 'src/User/user.entity';
 import { CourseEntity } from 'src/course/course.entity';
 import { QuizEntity } from 'src/quiz/quiz.entity';
 import { QuizAttemptEntity } from './quiz-attemp.entity';
@@ -32,6 +33,7 @@ export function fakeAttemptDb(opts: FakeOpts = {}) {
     answers: (opts.answers ?? []).map((a, i) => ({ id: i + 1, isCorrect: false, earnedMark: 0, ...a })) as any[],
     lockModes: [] as string[],
     courseLocks: [] as string[],
+    lockOrder: [] as string[],
   };
   const answerView = (a: any) => {
     const q = questions[a.questionId];
@@ -59,12 +61,16 @@ export function fakeAttemptDb(opts: FakeOpts = {}) {
       const manager: any = {
         findOne: async (entity: any, o: any) => {
           await tick();
+          if (entity === UserEntity) {
+            if (o?.lock) state.lockOrder.push('user:' + o.lock.mode);
+            return { id: o.where.id };
+          }
           if (entity === CourseEntity) {
-            if (o?.lock) state.courseLocks.push(o.lock.mode);
+            if (o?.lock) { state.courseLocks.push(o.lock.mode); state.lockOrder.push('course:' + o.lock.mode); }
             return { id: 5 };
           }
           if (entity === QuizEntity) {
-            if (o?.lock) state.lockModes.push(o.lock.mode);
+            if (o?.lock) { state.lockModes.push(o.lock.mode); state.lockOrder.push('quiz:' + o.lock.mode); }
             return { ...state.quiz };
           }
           const w = o.where;
