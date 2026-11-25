@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from '../user.entity';
 import { Repository } from 'typeorm';
@@ -9,6 +9,7 @@ import { UserRoles } from 'src/utils/enums/userRole.enum';
 import { DEFAULT_AVATARS,  } from 'src/utils/constants';
 import { JwtService } from '@nestjs/jwt';
 import { PayloadType } from 'src/utils/types/paylod.type';
+import { QuizAttemptEntity } from 'src/quiz-attempt/quiz-attemp.entity';
 import { UpdateUserDto } from './Dtos/update.dto';
 import { PaymentinfoService } from 'src/instructor-payment-info/paymentinfo/paymentinfo.service';
 
@@ -141,8 +142,16 @@ if(password){
  * @returns  seccessfull deleted message
  */
 async deleteUser(id:number){
-const result=await this.userRepo.delete(id);
-if(result.affected==0) throw new NotFoundException();
+// An account with exam attempts cannot be deleted: the attempts cascade with the user and the results
+// would be lost. The user row is locked first, so an attempt being created at the same moment either
+// is seen by the count or waits for this transaction (its foreign key needs the same row).
+await this.userRepo.manager.transaction(async (m)=>{
+  const user=await m.findOne(UserEntity,{where:{id},lock:{mode:'pessimistic_write'}});
+  if(!user) throw new NotFoundException();
+  const attempts=await m.count(QuizAttemptEntity,{where:{user:{id}}});
+  if(attempts>0) throw new ConflictException('This account has exam attempts, so it cannot be deleted');
+  await m.delete(UserEntity,id);
+});
 return {message:'User Deleted Successfully'};
 }
 
