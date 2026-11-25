@@ -3,6 +3,7 @@ import { QuizEntity } from 'src/quiz/quiz.entity';
 import { QuizAttemptEntity } from './quiz-attemp.entity';
 import { StudentAnswerEntity } from 'src/student-answer/student_answer.entity';
 import { QuestionEntity } from 'src/question/question.entity';
+import { ChoiceEntity } from 'src/choice/choise.entity';
 import { QuizAttemptService } from './quiz-attempt.service';
 
 const tick = () => new Promise((r) => setTimeout(r, 1));
@@ -59,6 +60,18 @@ export function fakeAttemptDb(opts: FakeOpts = {}) {
             return { ...state.quiz };
           }
           const w = o.where;
+          if (entity === QuestionEntity) {
+            if (!questions[w.id] || (opts.quizOfQuestion?.[w.id] ?? 10) !== w.quiz.id) return null;
+            return { id: w.id, mark: questions[w.id].mark };
+          }
+          if (entity === ChoiceEntity) {
+            const c = questions[w.question.id]?.choices.find((x) => x.id === w.id);
+            return c ? { id: c.id } : null;
+          }
+          if (entity === StudentAnswerEntity) {
+            const a = state.answers.find((x) => x.attemptId === w.attempt.id && x.questionId === w.question.id);
+            return a ? { id: a.id } : null;
+          }
           const a = w.id !== undefined ? state.attempts.find((x) => x.id === w.id) : state.attempts.find((x) => x.quiz.id === w.quiz.id && x.user.id === w.user.id);
           if (!a) return null;
           if (o.loadRelationIds) return { ...a, user: a.user.id, quiz: a.quiz.id };
@@ -66,6 +79,7 @@ export function fakeAttemptDb(opts: FakeOpts = {}) {
         },
         find: async (entity: any, o: any) => {
           await tick();
+          if (entity === StudentAnswerEntity && o.loadRelationIds) return state.answers.filter((a) => a.attemptId === o.where.attempt.id).map((a) => ({ id: a.id, question: a.questionId, choice: a.choiceId }));
           if (entity === StudentAnswerEntity) return state.answers.filter((a) => a.attemptId === o.where.attempt.id).map(answerView);
           return [];
         },
@@ -74,6 +88,14 @@ export function fakeAttemptDb(opts: FakeOpts = {}) {
           if (entity !== QuestionEntity) return null;
           const vals = Object.values(questions);
           return vals.length ? vals.reduce((t, q) => t + q.mark, 0) : null;
+        },
+        update: async (_e: any, id: number, patch: any) => {
+          await tick();
+          Object.assign(state.answers.find((x) => x.id === id), { choiceId: patch.choice.id });
+        },
+        insert: async (_e: any, v: any) => {
+          await tick();
+          state.answers.push({ id: state.answers.length + 1, isCorrect: false, earnedMark: 0, attemptId: v.attempt.id, questionId: v.question.id, choiceId: v.choice.id });
         },
         create: (_e: any, x: any) => ({ ...x }),
         save: async (a: any, b?: any) => {
