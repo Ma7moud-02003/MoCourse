@@ -49,7 +49,7 @@ async getCourseSections(courseId:number,userId:number,pageNumber?:number,role?:U
   const sectionsPerPage=10;
 const sections= await this.sectinRepo.find({
   where:{course:{id:courseId}}
-  ,skip:sectionsPerPage*(pageNum-1),
+  ,skip:sectionsPerPage*Math.max(pageNum-1,0),
     take:sectionsPerPage
 });
 let isEnrolled:boolean=false;
