@@ -7,7 +7,7 @@ const tick = () => new Promise((r) => setTimeout(r, 1));
 
 export function fakeExamDb(opts: { published: boolean; questionIds: number[]; ownerId?: number; marks?: Record<number, number>; attempts?: number }) {
   const state = {
-    quiz: { id: 10, isPublished: opts.published, title: 'Quiz', course: { Instractor: { id: opts.ownerId ?? 3 } } } as any,
+    quiz: { id: 10, isPublished: opts.published, title: 'Quiz', opensAt: new Date('2099-01-01T07:00:00Z'), closesAt: new Date('2099-01-01T08:00:00Z'), course: { Instractor: { id: opts.ownerId ?? 3 } } } as any,
     questions: [...opts.questionIds],
     marks: { ...(opts.marks ?? {}) } as Record<number, number>,
   };
