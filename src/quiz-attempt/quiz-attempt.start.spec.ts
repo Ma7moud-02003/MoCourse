@@ -1,53 +1,9 @@
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { getMetadataArgsStorage } from 'typeorm';
-import { QuizAttemptService } from './quiz-attempt.service';
+import { fakeAttemptDb, FakeOpts } from './attempt-fake-db-spec';
 import { QuizAttemptEntity } from './quiz-attemp.entity';
-import { QuizEntity } from 'src/quiz/quiz.entity';
 
-const tick = () => new Promise((r) => setTimeout(r, 1));
-
-function build(opts: { published?: boolean; enrolled?: boolean; timeLimit?: number; attempts?: any[] } = {}) {
-  const state = {
-    quiz: { id: 10, isPublished: opts.published ?? true, timeLimit: opts.timeLimit ?? 30, course: { id: 5 } } as any,
-    attempts: [...(opts.attempts ?? [])] as any[],
-    lockModes: [] as string[],
-  };
-  let mutex: Promise<void> = Promise.resolve();
-  const transaction = async (fn: any) => {
-    // starts in the test are serialised like the unique rule would force on duplicates
-    const prev = mutex;
-    let release!: () => void;
-    mutex = new Promise<void>((r) => (release = r));
-    await prev;
-    try {
-      const manager: any = {
-        findOne: async (entity: any, o: any) => {
-          await tick();
-          if (entity === QuizEntity) {
-            if (o?.lock) state.lockModes.push(o.lock.mode);
-            return { ...state.quiz };
-          }
-          return state.attempts.find((a) => a.quiz.id === o.where.quiz.id && a.user.id === o.where.user.id) ?? null;
-        },
-        create: (_e: any, x: any) => ({ ...x }),
-        save: async (x: any) => {
-          await tick();
-          const row = { id: state.attempts.length + 1, startedAt: new Date(), ...x };
-          state.attempts.push(row);
-          return row;
-        },
-      };
-      return await fn(manager);
-    } finally {
-      release();
-    }
-  };
-  const attemptRepo: any = { manager: { transaction } };
-  const quizRepo: any = { findOne: jest.fn(async () => ({ ...state.quiz })) };
-  const enroll: any = { verifyStudentEnrollment: jest.fn(async () => opts.enrolled ?? true) };
-  const service = new QuizAttemptService(attemptRepo, quizRepo, enroll);
-  return { service, state, enroll };
-}
+const build = (o: FakeOpts = {}) => fakeAttemptDb(o);
 
 describe('QuizAttemptService.startAttempt', () => {
   beforeEach(() => jest.useFakeTimers({ doNotFake: ['setTimeout', 'nextTick', 'setImmediate'] }).setSystemTime(new Date('2026-01-01T10:00:00Z')));
@@ -89,17 +45,22 @@ describe('QuizAttemptService.startAttempt', () => {
     expect(state.attempts).toHaveLength(2);
   });
 
-  it('after the deadline an unfinished attempt is not resumed and not duplicated', async () => {
+  it('after the deadline start does not resume: the attempt is closed with a 409 carrying the result', async () => {
     const { service, state } = build({ timeLimit: 30 });
     await service.startAttempt(10, 7);
     jest.setSystemTime(new Date('2026-01-01T10:30:00Z'));
-    await expect(service.startAttempt(10, 7)).rejects.toBeInstanceOf(ConflictException);
+    const err: any = await service.startAttempt(10, 7).catch((e) => e);
+    expect(err).toBeInstanceOf(ConflictException);
+    expect(err.getResponse().result).toMatchObject({ submitted: true, score: 0 });
     expect(state.attempts).toHaveLength(1);
+    expect(state.attempts[0].submitted).toBe(true);
   });
 
-  it('a submitted attempt cannot be started again', async () => {
-    const { service, state } = build({ attempts: [{ id: 1, quiz: { id: 10 }, user: { id: 7 }, submitted: true, expiresAt: new Date('2026-01-01T09:00:00Z') }] });
-    await expect(service.startAttempt(10, 7)).rejects.toBeInstanceOf(ConflictException);
+  it('a submitted attempt cannot be started again and the 409 carries the stored result', async () => {
+    const { service, state } = build({ attempts: [{ id: 1, quiz: { id: 10 }, user: { id: 7 }, submitted: true, score: 4, passed: true, submittedAt: new Date('2026-01-01T09:30:00Z'), expiresAt: new Date('2026-01-01T09:45:00Z') }] });
+    const err: any = await service.startAttempt(10, 7).catch((e) => e);
+    expect(err).toBeInstanceOf(ConflictException);
+    expect(err.getResponse().result).toMatchObject({ attemptId: 1, score: 4, passed: true });
     expect(state.attempts).toHaveLength(1);
   });
 
