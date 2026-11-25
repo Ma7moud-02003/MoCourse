@@ -1,4 +1,5 @@
-import { Controller, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
+import { SaveAnswerDto } from './dto/save-answer.dto';
 import { QuizAttemptService } from './quiz-attempt.service';
 import { Payload } from 'src/common/Decorators/payload.decorator';
 import * as paylodType from 'src/utils/types/paylod.type';
@@ -23,5 +24,16 @@ export class QuizAttemptController {
   @Post(':attemptId/submit')
   submit(@Param('attemptId', new ParseIntPipe()) attemptId: number, @Payload() payload: paylodType.PayloadType) {
     return this.attemptService.submitAttempt(attemptId, payload.id);
+  }
+
+  @Roles(UserRoles.STUDENT)
+  @UseGuards(AuthGuard, Roleguard)
+  @Put(':attemptId/answer')
+  saveAnswer(
+    @Param('attemptId', new ParseIntPipe()) attemptId: number,
+    @Body() dto: SaveAnswerDto,
+    @Payload() payload: paylodType.PayloadType,
+  ) {
+    return this.attemptService.saveAnswer(attemptId, payload.id, dto.questionId, dto.choiceId);
   }
 }
