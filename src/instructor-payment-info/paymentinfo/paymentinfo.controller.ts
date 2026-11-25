@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { PaymentInfoDto } from './dtos/paymentInfo.dto';
 import { Payload } from 'src/common/Decorators/payload.decorator';
 import * as paylodType from 'src/utils/types/paylod.type';
@@ -29,7 +29,7 @@ return this.paymentService.updatedPaymentInfo(body,payload.id);
 
 @Get('info/:id')
 @UseGuards(AuthGuard)
-getPaymentInfo(@Param('id') id:number){
+getPaymentInfo(@Param('id',new ParseIntPipe) id:number){
 return this.paymentService.getInsPatmentInfo(id);
 }
 
