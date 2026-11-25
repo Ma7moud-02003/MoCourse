@@ -101,6 +101,19 @@ return !!enroll;
  }
 
  /**
+  * An instructor may only read data of a student who is enrolled in one of the instructor's own courses.
+  * Unknown course, a course owned by someone else and a student who is not enrolled all give the same 404,
+  * so the answer does not reveal which of them it was.
+  */
+ public async assertInstructorCanViewStudent(courseId:number,studentId:number,insId:number){
+if(!courseId||!studentId||!insId) throw new BadRequestException();
+const course=await this.courseService.getSingleCourse(courseId);
+if(course.Instractor.id!==insId) throw new NotFoundException('Student not found in this course');
+const enrolled=await this.verifyStudentEnrollment(studentId,courseId);
+if(!enrolled) throw new NotFoundException('Student not found in this course');
+ }
+
+ /**
   * get stusents whos enrolled that course
   * @param courseId 
   * @returns stusents
