@@ -257,11 +257,12 @@ export class QuizAttemptService {
       where: { quiz: { id: quizId }, submitted: false, expiresAt: LessThanOrEqual(new Date()) },
     });
 
+    const nowMs = Date.now();
     const total = await this.totalMarksOf(manager, quizId);
     const [rows, count] = await manager.findAndCount(QuizAttemptEntity, {
       where: { quiz: { id: quizId } },
       relations: { user: true },
-      select: { id: true, submitted: true, score: true, passed: true, startedAt: true, submittedAt: true, user: { id: true, fullName: true, email: true } },
+      select: { id: true, submitted: true, expiresAt: true, score: true, passed: true, startedAt: true, submittedAt: true, user: { id: true, fullName: true, email: true } },
       order: { id: 'ASC' },
       skip: (pageNum - 1) * pageSize,
       take: pageSize,
@@ -276,7 +277,12 @@ export class QuizAttemptService {
       summary: {
         attempts: count,
         submitted,
-        inProgress: count - submitted,
+        inProgress: count - submitted - stillDue,
+        pendingGrading: stillDue,
+        // true only when every attempt is graded or still running; averageScore, passed and failed
+        // count graded (submitted) attempts only, never pending ones
+        complete: stillDue === 0,
+        gradedAttempts: submitted,
         passed,
         failed: submitted - passed,
         averageScore: submitted ? Math.round((scoreSum / submitted) * 100) / 100 : null,
@@ -288,7 +294,9 @@ export class QuizAttemptService {
       attempts: rows.map((a) => ({
         attemptId: a.id,
         student: { id: a.user.id, fullName: a.user.fullName, email: a.user.email },
-        status: a.submitted ? 'submitted' : 'in_progress',
+        // pending_grading = the deadline passed but this attempt has not been graded yet (only when more than
+        // the per-request batch were due). It has no score, it is not a zero and not a fail.
+        status: a.submitted ? 'submitted' : a.expiresAt.getTime() <= nowMs ? 'pending_grading' : 'in_progress',
         startedAt: a.startedAt,
         submittedAt: a.submittedAt,
         // an open attempt has no score yet
