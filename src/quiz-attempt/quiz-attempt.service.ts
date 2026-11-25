@@ -229,12 +229,14 @@ export class QuizAttemptService {
   /**
    * Teacher's results for one exam. Any attempt whose deadline passed without a submit is
    * graded first (same routine as submit), so nobody shows up as an open zero.
-   * Only the instructor who owns the exam's course can read it.
+   * Only the instructor who owns the exam's course, or an admin, can read it.
+   * Students enrolled in the course who never started the exam are listed separately in
+   * `notStarted` (they have no attempt, so no score and no pass/fail, and are not counted as zeros).
    */
-  public async getExamResults(quizId: number, instructorId: number, page = 1, limit = 20) {
+  public async getExamResults(quizId: number, instructorId: number, page = 1, limit = 20, isAdmin = false) {
     const quiz = await this.quizRepo.findOne({ where: { id: quizId }, relations: { course: { Instractor: true } } });
     if (!quiz) throw new NotFoundException('Exam not found');
-    if (quiz.course?.Instractor?.id !== instructorId) throw new ForbiddenException('You do not own this exam');
+    if (!isAdmin && quiz.course?.Instractor?.id !== instructorId) throw new ForbiddenException('You do not own this exam');
     const pageSize = Math.min(Math.max(limit, 1), 100);
     const pageNum = Math.max(page, 1);
     const manager = this.attemptRepo.manager;
@@ -269,6 +271,8 @@ export class QuizAttemptService {
     });
     const submitted = await manager.count(QuizAttemptEntity, { where: { quiz: { id: quizId }, submitted: true } });
     const passed = await manager.count(QuizAttemptEntity, { where: { quiz: { id: quizId }, submitted: true, passed: true } });
+    const notStarted = await this.notStartedOf(manager, quizId, quiz.course?.id);
+    const examClosed = !!quiz.closesAt && quiz.closesAt.getTime() <= nowMs;
     const scoreSum = (await manager.sum(QuizAttemptEntity, 'score', { quiz: { id: quizId }, submitted: true })) ?? 0;
     return {
       quizId,
@@ -289,6 +293,19 @@ export class QuizAttemptService {
         pendingFinalization: stillDue,
         finalizeErrors: failed,
       },
+      // enrolled students with no attempt at all. 'did_not_attempt' only after the exam closed;
+      // before that they can still start, so they are 'not_started'. Never a score of 0.
+      notStarted: {
+        count: notStarted.count,
+        truncated: notStarted.count > notStarted.students.length,
+        students: notStarted.students.map((u) => ({
+          student: { id: u.id, fullName: u.fullName, email: u.email },
+          status: examClosed ? 'did_not_attempt' : 'not_started',
+          score: null,
+          percentage: null,
+          passed: null,
+        })),
+      },
       page: pageNum,
       pageSize,
       attempts: rows.map((a) => ({
@@ -305,6 +322,28 @@ export class QuizAttemptService {
         passed: a.submitted ? a.passed : null,
       })),
     };
+  }
+
+  /** Students enrolled in the exam's course who have no attempt on this exam (first 100 by id, plus the total). */
+  private async notStartedOf(manager: EntityManager, quizId: number, courseId?: number) {
+    if (!courseId) return { count: 0, students: [] as { id: number; fullName: string; email: string }[] };
+    const base = () =>
+      manager
+        .createQueryBuilder()
+        .from('enrollments', 'e')
+        .innerJoin('users', 'u', 'u.id = e."userId"')
+        .where('e."courseId" = :courseId', { courseId })
+        .andWhere('NOT EXISTS (SELECT 1 FROM quiz_attempt_entity a WHERE a."quizId" = :quizId AND a."userId" = u.id)', { quizId });
+    const count = Number((await base().select('COUNT(DISTINCT u.id)', 'n').getRawOne())?.n ?? 0);
+    const students = await base()
+      .select('u.id', 'id')
+      .addSelect('u."fullName"', 'fullName')
+      .addSelect('u.email', 'email')
+      .distinct(true)
+      .orderBy('u.id', 'ASC')
+      .limit(100)
+      .getRawMany();
+    return { count, students: students.map((r: any) => ({ id: Number(r.id), fullName: r.fullName, email: r.email })) };
   }
 
   /**
