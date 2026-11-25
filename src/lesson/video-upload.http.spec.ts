@@ -5,7 +5,8 @@ import { JwtModule, JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserRoles } from 'src/utils/enums/userRole.enum';
 import * as http from 'http';
-import { mkdtempSync, readdirSync, writeFileSync, utimesSync, existsSync, mkdirSync, statSync } from 'fs';
+import * as fs from 'fs';
+import { rmSync, mkdtempSync, readdirSync, writeFileSync, utimesSync, existsSync, mkdirSync, statSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { LessonController } from './lesson.controller';
@@ -13,7 +14,7 @@ import { LessonService } from './lesson.service';
 import { AuthGuard } from 'src/common/Guards/auth.guard';
 import { Roleguard } from 'src/common/Guards/role.guard';
 import { LessonType } from 'src/utils/enums/lessonType.enum';
-import { sweepOldTempUploads, lessonUploadSlots } from 'src/common/upload/temp-upload';
+import { sweepOldTempUploads, lessonUploadSlots, stuckTempFiles } from 'src/common/upload/temp-upload';
 import { OWN_DIR_NAME, wholeNumber, uploadConcurrency, videoMaxBytes, DEFAULT_VIDEO_MAX_BYTES, DEFAULT_CONCURRENCY, MAX_CONCURRENCY, HARD_MAX_BYTES } from 'src/common/upload/upload.config';
 
 /** Real routing, multer, temp-file storage and slot limiter. DB, auth guards and Cloudinary are stubbed. */
@@ -149,21 +150,69 @@ describe('lesson video upload over HTTP (disk-backed, stubbed provider)', () => 
     await settle();
     expect(left()).toEqual([]);
   });
-  it('startup sweep: removes dead-process and stale folders, keeps live fresh folders and its own', async () => {
+  it('startup sweep: removes only provably dead process folders; live (even old files), EPERM and own folders are kept', async () => {
     const mk = (name: string, ageMs: number) => {
       const d = join(dir, name); mkdirSync(d, { recursive: true });
       const f = join(d, 'upload-x'); writeFileSync(f, 'x');
       const t = new Date(Date.now() - ageMs); utimesSync(f, t, t);
     };
-    mk('p999999-aaaaaaaa', 0);                 // process id not alive -> removed even though fresh
-    mk(`p${process.pid}-bbbbbbbb`, 2 * 3600e3); // pid looks alive but files are 2h old -> removed
-    mk(`p${process.pid}-cccccccc`, 1000);       // pid alive, active file -> kept (another live process)
-    mkdirSync(join(dir, OWN_DIR_NAME), { recursive: true }); // our own folder is never touched
+    mk('p111111-aaaaaaaa', 0);                  // dead process -> removed even though fresh
+    mk(`p${process.pid}-bbbbbbbb`, 5 * 3600e3); // LIVE process, file 5h old (long upload) -> kept
+    mk('p222222-dddddddd', 5 * 3600e3);         // indeterminate (EPERM), old -> kept
+    mk('p333333-eeeeeeee', 5 * 3600e3);         // unknown error -> kept
+    mkdirSync(join(dir, OWN_DIR_NAME), { recursive: true });
     writeFileSync(join(dir, OWN_DIR_NAME, 'upload-mine'), 'x');
     writeFileSync(join(dir, 'unrelated.txt'), 'x');
-    expect(await sweepOldTempUploads()).toBe(2);
-    expect(readdirSync(dir).sort()).toEqual([OWN_DIR_NAME, `p${process.pid}-cccccccc`, 'unrelated.txt'].sort());
-    expect(existsSync(join(dir, OWN_DIR_NAME, 'upload-mine'))).toBe(true);
+    const realKill = process.kill;
+    const spy = jest.spyOn(process, 'kill').mockImplementation(((pid: number, sig?: any) => {
+      if (pid === 111111) throw Object.assign(new Error('x'), { code: 'ESRCH' });
+      if (pid === 222222) throw Object.assign(new Error('x'), { code: 'EPERM' });
+      if (pid === 333333) throw Object.assign(new Error('x'), { code: 'EINVAL' });
+      return realKill.call(process, pid, sig);
+    }) as any);
+    try {
+      expect(await sweepOldTempUploads()).toBe(1);
+    } finally { spy.mockRestore(); }
+    expect(readdirSync(dir).sort()).toEqual([OWN_DIR_NAME, `p${process.pid}-bbbbbbbb`, 'p222222-dddddddd', 'p333333-eeeeeeee', 'unrelated.txt'].sort());
+    for (const d of [`p${process.pid}-bbbbbbbb`, 'p222222-dddddddd', 'p333333-eeeeeeee']) rmSync(join(dir, d), { recursive: true });
+    rmSync(join(dir, 'unrelated.txt'));
+    rmSync(join(dir, OWN_DIR_NAME, 'upload-mine'));
+  });
+
+  it('PDF read error: 5xx is returned, temp file is deleted, slot is freed, provider not called', async () => {
+    lessonType = LessonType.PDF;
+    const fsp = require('fs/promises');
+    const spy = jest.spyOn(fsp, 'readFile').mockRejectedValueOnce(new Error('EIO'));
+    try {
+      const res = await request(app.getHttpServer()).patch('/api/lesson/uploadFile/1').attach('file', Buffer.from('%PDF-1.4 x'), { filename: 'a.pdf', contentType: 'application/pdf' });
+      expect(res.status).toBeGreaterThanOrEqual(500);
+    } finally { spy.mockRestore(); }
+    await settle();
+    expect(left()).toEqual([]);
+    expect(lessonUploadSlots.inUse).toBe(0);
+    expect(cloud.uploadFile).not.toHaveBeenCalled();
+  });
+
+  it('unlink failure: retried, slot still freed, file kept on stuck list, 503 once stuck >= slots, recovers when delete works', async () => {
+    const real = fs.promises.unlink;
+    const spy = jest.spyOn(fs.promises, 'unlink').mockRejectedValue(Object.assign(new Error('EBUSY'), { code: 'EBUSY' }));
+    const err = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      await put(10).expect(200);
+      for (let i = 0; i < 40 && lessonUploadSlots.inUse; i++) await new Promise((r) => setTimeout(r, 25));
+      expect(lessonUploadSlots.inUse).toBe(0);       // slot not leaked
+      expect(stuckTempFiles.size).toBe(1);            // but the bound is honestly tracked
+      expect(left().length).toBe(1);
+      await put(10).expect(503);                      // concurrency is 1, so 1 stuck file stops new uploads
+    } finally { spy.mockRestore(); err.mockRestore(); }
+    // the delete works again: the next request retries the stuck file and a later one succeeds
+    await put(10).then(() => undefined);
+    for (let i = 0; i < 40 && stuckTempFiles.size; i++) await new Promise((r) => setTimeout(r, 25));
+    expect(stuckTempFiles.size).toBe(0);
+    await put(10).expect(200);
+    await settle();
+    expect(left()).toEqual([]);
+    void real;
   });
 });
 
