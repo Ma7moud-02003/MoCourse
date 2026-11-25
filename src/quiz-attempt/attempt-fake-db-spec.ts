@@ -12,6 +12,8 @@ export type FakeOpts = {
   published?: boolean;
   enrolled?: boolean;
   timeLimit?: number;
+  opensAt?: Date | null;
+  closesAt?: Date | null;
   passMark?: number;
   attempts?: any[];
   // questions: id -> { mark, choices: [{ id, isCorrect }] }
@@ -24,7 +26,7 @@ export type FakeOpts = {
 export function fakeAttemptDb(opts: FakeOpts = {}) {
   const questions = opts.questions ?? {};
   const state = {
-    quiz: { id: 10, isPublished: opts.published ?? true, timeLimit: opts.timeLimit ?? 30, passMark: opts.passMark ?? 60, totalMarks: 999, course: { id: 5 } } as any,
+    quiz: { id: 10, isPublished: opts.published ?? true, timeLimit: opts.timeLimit ?? 30, opensAt: opts.opensAt === undefined ? new Date('2026-01-01T09:00:00Z') : opts.opensAt, closesAt: opts.closesAt === undefined ? new Date('2026-01-01T10:30:00Z') : opts.closesAt, passMark: opts.passMark ?? 60, totalMarks: 999, course: { id: 5 } } as any,
     attempts: (opts.attempts ?? []).map((a) => ({ ...a })) as any[],
     answers: (opts.answers ?? []).map((a, i) => ({ id: i + 1, isCorrect: false, earnedMark: 0, ...a })) as any[],
     lockModes: [] as string[],
@@ -123,15 +125,6 @@ export function fakeAttemptDb(opts: FakeOpts = {}) {
   };
   const attemptRepo: any = {
     manager: { transaction },
-    find: async (o: any) => {
-      await tick();
-      const lim = o.where.expiresAt.value as Date;
-      return state.attempts
-        .filter((a) => !a.submitted && a.expiresAt.getTime() <= lim.getTime())
-        .sort((x, y) => x.expiresAt.getTime() - y.expiresAt.getTime())
-        .slice(0, o.take)
-        .map((a) => ({ ...a, user: a.user.id, quiz: a.quiz.id }));
-    },
   };
   const quizRepo: any = { findOne: jest.fn(async () => ({ ...state.quiz })) };
   const enroll: any = { verifyStudentEnrollment: jest.fn(async () => opts.enrolled ?? true) };
