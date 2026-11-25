@@ -1,27 +1,27 @@
 ### get all courses
 GET  http://localhost:3000/api/course?categoryId=1
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Niwicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODYxMjc3NjMsImV4cCI6MTc4NjEzMTM2M30.86RgvYzQg80yOuT1XXCqsXAHHFiZc4_SQUZMVqE8pbA
+Authorization: Bearer YOUR_TOKEN_HERE
 ### get student courses
 GET  http://localhost:3000/api/course/myCourses
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Nywicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODg1NjA3ODYsImV4cCI6MTc4ODU2NDM4Nn0.2o9VOsTOntEsrs94HhXvwOmTUJ75saTFTJIMvVQ73AA
+Authorization: Bearer YOUR_TOKEN_HERE
 
 ### get instractor courses 
 GET  http://localhost:3000/api/course/ins/myCourses
-Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3OTA4NDMyODAsImV4cCI6MTc5MDg3OTI4MH0.SQzfbosSW0yh_lPOTcks1ieCLIB8hcQdsulwoSCFD4o
+Authorization:Bearer YOUR_TOKEN_HERE
 ### details course
 
 GET  http://localhost:3000/api/course/details/5
-Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3OTA4NDMyODAsImV4cCI6MTc5MDg3OTI4MH0.SQzfbosSW0yh_lPOTcks1ieCLIB8hcQdsulwoSCFD4o
+Authorization:Bearer YOUR_TOKEN_HERE
 ### enroll course for student
 POST   http://localhost:3000/api/enrollment/5
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Niwicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODUwMTQ1MjcsImV4cCI6MTc4NTAxODEyN30.Hx_avy14JibjxlzaIb8F8tZdfXVo8ZJhX1vfrjuBHDk
+Authorization: Bearer YOUR_TOKEN_HERE
 ### get user enrollment courses
 GET  http://localhost:3000/api/enrollment
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Niwicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODUwMTQ1MjcsImV4cCI6MTc4NTAxODEyN30.Hx_avy14JibjxlzaIb8F8tZdfXVo8ZJhX1vfrjuBHDk
+Authorization: Bearer YOUR_TOKEN_HERE
 
 ### Update course 
 PATCH   http://localhost:3000/api/course/update/5
-Authorization: BearereyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODUyMzUzOTAsImV4cCI6MTc4NTIzODk5MH0.eluQhs_1Bt8f2EWz7z5Sixkb--dxNFq6_1RKfe_t3QU
+Authorization: Bearer YOUR_TOKEN_HERE
 Content-Type: application/json
 
 {
@@ -46,4 +46,4 @@ Content-Type: application/json
 
 ### delete course 
 DELETE    http://localhost:3000/api/course/delete/5
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODYyMTAyMjEsImV4cCI6MTc4NjIxMzgyMX0.EOLrFo7-y_QpbmDI7nwnOzn4imqhdxZnkkkLLZ8_slY
+Authorization: Bearer YOUR_TOKEN_HERE
