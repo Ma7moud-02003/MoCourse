@@ -145,6 +145,7 @@ async deleteUser(id:number){
 // An account with exam attempts cannot be deleted: the attempts cascade with the user and the results
 // would be lost. The user row is locked first, so an attempt being created at the same moment either
 // is seen by the count or waits for this transaction (its foreign key needs the same row).
+try{
 await this.userRepo.manager.transaction(async (m)=>{
   const user=await m.findOne(UserEntity,{where:{id},lock:{mode:'pessimistic_write'}});
   if(!user) throw new NotFoundException();
@@ -152,6 +153,11 @@ await this.userRepo.manager.transaction(async (m)=>{
   if(attempts>0) throw new ConflictException('This account has exam attempts, so it cannot be deleted');
   await m.delete(UserEntity,id);
 });
+}catch(e:any){
+  // the database refuses to delete an account that still has enrollments or courses: say so clearly (nothing is cascaded)
+  if(e?.code==='23503' || e?.driverError?.code==='23503') throw new ConflictException('This account still has enrollments or courses, so it cannot be deleted');
+  throw e;
+}
 return {message:'User Deleted Successfully'};
 }
 
