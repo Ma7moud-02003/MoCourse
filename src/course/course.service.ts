@@ -1,9 +1,11 @@
-import { BadRequestException, forwardRef, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, forwardRef, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CouurseDto } from './dtos/course.dto';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CourseEntity } from './course.entity';
-import { Between, Like, Repository } from 'typeorm';
+import { Between, In, Like, Repository } from 'typeorm';
+import { QuizEntity } from 'src/quiz/quiz.entity';
+import { QuizAttemptEntity } from 'src/quiz-attempt/quiz-attemp.entity';
 import { PayloadType } from 'src/utils/types/paylod.type';
 import { UserRoles } from 'src/utils/enums/userRole.enum';
 import { UpdateCouurseDto } from './dtos/updateCourse.dto';
@@ -124,8 +126,21 @@ export class CourseService {
         if (role != UserRoles.ADMIN) {
             if (course.Instractor.id != insId) throw new UnauthorizedException('Access Denied You are not allowed to access this course');
         }
-        return await this.courseRepo.remove(course);
-        
+        // a course delete cascades to its exams and their attempts: refuse if any student attempted
+        // one. The exams are locked first so a student cannot start while the check runs.
+        return this.courseRepo.manager.transaction(async (manager) => {
+            // The course row is locked first. A student starting an exam takes a shared lock on the
+            // same course row before the exam row, so a start cannot slip in between the check and the delete.
+            const lockedCourse = await manager.findOne(CourseEntity, { where: { id: courseId }, select: { id: true }, lock: { mode: 'pessimistic_write' } });
+            if (!lockedCourse) throw new NotFoundException('Course not found');
+            const exams = await manager.find(QuizEntity, { where: { course: { id: courseId } }, select: { id: true }, order: { id: 'ASC' } });
+            if (exams.length) {
+                await manager.find(QuizEntity, { where: { id: In(exams.map((e) => e.id)) }, select: { id: true }, order: { id: 'ASC' }, lock: { mode: 'pessimistic_write' } });
+                const attempts = await manager.count(QuizAttemptEntity, { where: { quiz: { course: { id: courseId } } } });
+                if (attempts > 0) throw new ConflictException('Students already attempted an exam in this course, so it cannot be deleted');
+            }
+            return await manager.remove(course);
+        });
     }
 
     /**
