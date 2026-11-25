@@ -1,6 +1,8 @@
 import {
   IsBoolean,
   IsInt,
+  IsISO8601,
+  Matches,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -29,9 +31,19 @@ export class CreateQuizDto {
   @Max(100)
   passMark!: number;
 
+  @IsOptional()
   @IsInt()
   @Min(1)
-  timeLimit!: number; // بالدقائق
+  timeLimit?: number; // بالدقائق (optional: defaults to the window length)
+
+  // exam window, full date-time with explicit offset, e.g. 2026-01-01T09:00:00+02:00
+  @IsISO8601({ strict: true })
+  @Matches(/(Z|[+-]\d{2}:?\d{2})$/i, { message: 'opensAt must include a time zone offset' })
+  opensAt!: string;
+
+  @IsISO8601({ strict: true })
+  @Matches(/(Z|[+-]\d{2}:?\d{2})$/i, { message: 'closesAt must include a time zone offset' })
+  closesAt!: string;
 
   @IsOptional()
   @IsInt()
