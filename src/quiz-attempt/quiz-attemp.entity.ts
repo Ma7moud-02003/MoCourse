@@ -1,11 +1,14 @@
 import { UserEntity } from "src/User/user.entity";
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
-import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique } from "typeorm";
+import { Column, CreateDateColumn, Entity, Index, ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique } from "typeorm";
 import { QuizEntity } from "../quiz/quiz.entity";
 import { StudentAnswerEntity } from "../student-answer/student_answer.entity";
 
 // one attempt per student per exam (also backs the attempt lookup and count by exam)
 @Unique(['quiz', 'user'])
+// partial index for the expiry sweep: only unsubmitted attempts, ordered by deadline.
+// It stays tiny because attempts leave it once they are submitted.
+@Index('IDX_quiz_attempt_open_expiry', ['expiresAt'], { where: '"submitted" = false' })
 @Entity()
 export class QuizAttemptEntity {
 
