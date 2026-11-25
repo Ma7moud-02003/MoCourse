@@ -121,7 +121,18 @@ export function fakeAttemptDb(opts: FakeOpts = {}) {
       release();
     }
   };
-  const attemptRepo: any = { manager: { transaction } };
+  const attemptRepo: any = {
+    manager: { transaction },
+    find: async (o: any) => {
+      await tick();
+      const lim = o.where.expiresAt.value as Date;
+      return state.attempts
+        .filter((a) => !a.submitted && a.expiresAt.getTime() <= lim.getTime())
+        .sort((x, y) => x.expiresAt.getTime() - y.expiresAt.getTime())
+        .slice(0, o.take)
+        .map((a) => ({ ...a, user: a.user.id, quiz: a.quiz.id }));
+    },
+  };
   const quizRepo: any = { findOne: jest.fn(async () => ({ ...state.quiz })) };
   const enroll: any = { verifyStudentEnrollment: jest.fn(async () => opts.enrolled ?? true) };
   const service = new QuizAttemptService(attemptRepo, quizRepo, enroll);
