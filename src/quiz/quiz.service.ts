@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QuizEntity } from './quiz.entity';
 import { Repository } from 'typeorm';
@@ -8,6 +8,7 @@ import { CourseEntity } from 'src/course/course.entity';
 import { EnrollmentService } from 'src/enrollment/enrollment.service';
 import { UpdateQuizDto } from './dtos/update.dto';
 import { QuestionEntity } from 'src/question/question.entity';
+import { QuizAttemptEntity } from 'src/quiz-attempt/quiz-attemp.entity';
 
 
 @Injectable()
@@ -92,6 +93,12 @@ export class QuizService {
 
   if (!quiz) {
     throw new NotFoundException('Quiz not found');
+  }
+
+  // once any student started, the exam and its settings are frozen
+  const attempts = await manager.count(QuizAttemptEntity, { where: { quiz: { id: quizId } } });
+  if (attempts > 0) {
+    throw new ConflictException('Students already started this exam, so its settings can no longer change');
   }
 
   if (dto.title !== undefined) {
