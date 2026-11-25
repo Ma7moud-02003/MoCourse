@@ -1,9 +1,9 @@
 GET  http://localhost:3000/api/progress/lessson_progress/3
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Niwicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODU3MDQ0NzIsImV4cCI6MTc4NTcwODA3Mn0.miO_jnCbpUOZMbX8lcGmZcxzgJ-04ORGf8NUy1EiP4w
+Authorization: Bearer YOUR_TOKEN_HERE
 
 ### Update Progress
 PATCH   http://localhost:3000/api/progress/update_lesson
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Niwicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODU3MDQ0NzIsImV4cCI6MTc4NTcwODA3Mn0.miO_jnCbpUOZMbX8lcGmZcxzgJ-04ORGf8NUy1EiP4w
+Authorization: Bearer YOUR_TOKEN_HERE
 Content-Type: application/json
 
 {
@@ -13,12 +13,11 @@ Content-Type: application/json
 
 ### get coure progress 
 GET  http://localhost:3000/api/progress/course_progress/5
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Niwicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3ODU3MDQ0NzIsImV4cCI6MTc4NTcwODA3Mn0.miO_jnCbpUOZMbX8lcGmZcxzgJ-04ORGf8NUy1EiP4w
+Authorization: Bearer YOUR_TOKEN_HERE
 
 
 ### get coure progressby Instraactor
 GET  http://localhost:3000/api/progress/instractor/course_progress/5/4
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywicm9sZSI6Ikluc3RydWN0b3IiLCJpYXQiOjE3ODU3MDYzMDAsImV4cCI6MTc4NTcwOTkwMH0.hjxUaIMCHmIeuj1t-91z40B-rBbJ58mUJW4xs0wJQLs
-
+Authorization: Bearer YOUR_TOKEN_HERE
 
 
