@@ -1,6 +1,7 @@
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { EnrollmentService } from 'src/enrollment/enrollment.service';
 import { ProgressService } from './progress.service';
+import { UserRoles } from 'src/utils/enums/userRole.enum';
 
 const OWNER = 9, OTHER = 77, STUDENT = 5, COURSE = 3;
 
@@ -53,5 +54,29 @@ describe('instructor can only see progress of enrolled students in own courses',
     const svc = new ProgressService(progressRepo, lessonService, {} as any, enrollService);
     await expect(svc.getStudentProgressForInstructor(COURSE, STUDENT, OWNER)).resolves.toEqual({ totalLesoons: 4, completedLessons: 1, persentage: 25 });
     expect(enrollService.assertInstructorCanViewStudent).toHaveBeenCalledWith(COURSE, STUDENT, OWNER);
+  });
+});
+
+describe('course roster is limited to the owner, admin sees all', () => {
+  it('owner gets the roster', async () => {
+    const { svc, enrollRepo } = enrollSetup(true);
+    enrollRepo.find = jest.fn().mockResolvedValue([{ id: 1 }]);
+    await expect(svc.getCourseStudentsFor(COURSE, OWNER, UserRoles.INSTRACTOR)).resolves.toEqual([{ id: 1 }]);
+  });
+  it('another instructor gets 404 and no roster query', async () => {
+    const { svc, enrollRepo } = enrollSetup(true);
+    enrollRepo.find = jest.fn();
+    await expect(svc.getCourseStudentsFor(COURSE, OTHER, UserRoles.INSTRACTOR)).rejects.toThrow(NotFoundException);
+    expect(enrollRepo.find).not.toHaveBeenCalled();
+  });
+  it('admin gets any roster without a course owner lookup', async () => {
+    const { svc, enrollRepo, courseService } = enrollSetup(true);
+    enrollRepo.find = jest.fn().mockResolvedValue([{ id: 1 }]);
+    await expect(svc.getCourseStudentsFor(COURSE, 1, UserRoles.ADMIN)).resolves.toEqual([{ id: 1 }]);
+    expect(courseService.getSingleCourse).not.toHaveBeenCalled();
+  });
+  it('unknown course gives 404 for an instructor', async () => {
+    const { svc } = enrollSetup(true);
+    await expect(svc.getCourseStudentsFor(999, OWNER, UserRoles.INSTRACTOR)).rejects.toThrow(NotFoundException);
   });
 });
