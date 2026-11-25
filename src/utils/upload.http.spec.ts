@@ -61,6 +61,29 @@ describe('upload routes over HTTP (stubbed Cloudinary)', () => {
     await request(app.getHttpServer()).post('/api/course/').field('title', 't').attach('thumbnail', png, { filename: 'a.png', contentType: 'image/png' }).expect(201);
     expect(cloud.uploadFile).toHaveBeenCalledTimes(1);
   });
+  const MB = 1024 * 1024;
+  const post = (n: number) => request(app.getHttpServer()).post('/api/course/').field('title', 't').attach('thumbnail', Buffer.alloc(n), { filename: 'a.png', contentType: 'image/png' });
+  const confirm = (n: number) => request(app.getHttpServer()).patch('/api/buy/confirm/5').field('transactionId', 't').field('paymentMethod', 'x').attach('thumbnail', Buffer.alloc(n), { filename: 'a.png', contentType: 'image/png' });
+  it('course thumbnail that is not an image: 400, no upload', async () => {
+    await request(app.getHttpServer()).post('/api/course/').field('title', 't').attach('thumbnail', Buffer.from('x'), { filename: 'a.pdf', contentType: 'application/pdf' }).expect(400);
+    expect(cloud.uploadFile).not.toHaveBeenCalled();
+  });
+  it('thumbnail: exactly 5 MB passes, 5 MB + 1 byte gets 413 with no upload', async () => {
+    await post(5 * MB + 1).expect(413);
+    expect(cloud.uploadFile).not.toHaveBeenCalled();
+    await post(5 * MB).expect(201);
+    expect(cloud.uploadFile).toHaveBeenCalledTimes(1);
+  });
+  it('payment proof: exactly 10 MB passes, 10 MB + 1 byte gets 413 with no upload', async () => {
+    await confirm(10 * MB + 1).expect(413);
+    expect(cloud.uploadFile).not.toHaveBeenCalled();
+    await confirm(10 * MB).expect(200);
+    expect(cloud.uploadFile).toHaveBeenCalledTimes(1);
+  });
+  it('payment proof that is not an image: 400, no upload', async () => {
+    await request(app.getHttpServer()).patch('/api/buy/confirm/5').field('transactionId', 't').field('paymentMethod', 'x').attach('thumbnail', Buffer.from('x'), { filename: 'a.pdf', contentType: 'application/pdf' }).expect(400);
+    expect(cloud.uploadFile).not.toHaveBeenCalled();
+  });
   it('purchase confirm without screenshot: 400, no upload', async () => {
     await request(app.getHttpServer()).patch('/api/buy/confirm/5').field('transactionId', 't').field('paymentMethod', 'x').expect(400);
     expect(cloud.uploadFile).not.toHaveBeenCalled();
