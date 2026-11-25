@@ -4,9 +4,10 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * Baseline: the schema as it was at main f7cc77d (what `synchronize` produced from the entities).
  *
  * - Empty database: creates everything.
- * - Database that already has the tables (built earlier by synchronize): does nothing. Check that
- *   it matches with `npm run migration:drift` (it must report no pending changes) before relying on
- *   the later migrations.
+ * - Database that already has tables: NOT skipped blindly. The baseline is built in a scratch schema and
+ *   compared with the real one (tables, columns, types, nullability, constraints, enum values). If they
+ *   match, the existing database is adopted as is. If anything differs, this migration stops with the list of
+ *   differences and changes nothing. Use an empty database, or write a reconcile migration for that database.
  * - down() refuses on purpose: reverting the baseline would drop every table and all data.
  */
 const QUERIES: string[] = [
@@ -64,16 +65,66 @@ const QUERIES: string[] = [
   "ALTER TABLE \"purchase\" ADD CONSTRAINT \"FK_de02d16582b8f768a0a9cf3cb00\" FOREIGN KEY (\"courseId\") REFERENCES \"courses\"(\"id\") ON DELETE NO ACTION ON UPDATE NO ACTION"
 ];
 
+const CHECK_SCHEMA = 'mig_baseline_check';
+
+async function snapshot(queryRunner: QueryRunner, schema: string): Promise<string[]> {
+  const cols = await queryRunner.query(
+    `SELECT c.table_name t, c.column_name col, c.data_type dt, c.udt_name u, c.is_nullable n, c.character_maximum_length l
+       FROM information_schema.columns c WHERE c.table_schema = $1`,
+    [schema],
+  );
+  const cons = await queryRunner.query(
+    `SELECT cl.relname t, co.conname n, co.contype k, regexp_replace(pg_get_constraintdef(co.oid), $2, '', 'g') d
+       FROM pg_constraint co JOIN pg_class cl ON cl.oid = co.conrelid JOIN pg_namespace ns ON ns.oid = cl.relnamespace
+      WHERE ns.nspname = $1`,
+    [schema, `"?${schema}"?\\.`],
+  );
+  const enums = await queryRunner.query(
+    `SELECT t.typname n, string_agg(e.enumlabel, ',' ORDER BY e.enumsortorder) v
+       FROM pg_type t JOIN pg_enum e ON e.enumtypid = t.oid JOIN pg_namespace ns ON ns.oid = t.typnamespace
+      WHERE ns.nspname = $1 GROUP BY t.typname`,
+    [schema],
+  );
+  return [
+    ...cols.map((r: any) => `column ${r.t}.${r.col} ${r.dt}/${r.u}${r.l ? '(' + r.l + ')' : ''} ${r.n === 'YES' ? 'null' : 'not null'}`),
+    ...cons.map((r: any) => `constraint ${r.t}.${r.n} ${r.k} ${r.d}`),
+    ...enums.map((r: any) => `enum ${r.n} (${r.v})`),
+  ];
+}
+
 export class Baseline1764000000000 implements MigrationInterface {
   name = 'Baseline1764000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const exists = await queryRunner.query(`SELECT to_regclass('public.users') AS t`);
-    if (exists[0]?.t) {
-      console.log('[baseline] tables already exist, skipping schema creation (verify with migration:drift)');
+    const tables = await queryRunner.query(`SELECT count(*) AS n FROM information_schema.tables WHERE table_schema = 'public' AND table_name <> 'migrations'`);
+    if (Number(tables[0].n) === 0) {
+      for (const sql of QUERIES) await queryRunner.query(sql);
       return;
     }
-    for (const sql of QUERIES) await queryRunner.query(sql);
+    // existing tables: prove they match the baseline before adopting them
+    await queryRunner.query(`DROP SCHEMA IF EXISTS ${CHECK_SCHEMA} CASCADE`);
+    await queryRunner.query(`CREATE SCHEMA ${CHECK_SCHEMA}`);
+    await queryRunner.query(`SET LOCAL search_path TO ${CHECK_SCHEMA}`);
+    try {
+      for (const sql of QUERIES) await queryRunner.query(sql.split('"public".').join(`"${CHECK_SCHEMA}".`));
+    } finally {
+      await queryRunner.query(`SET LOCAL search_path TO public`);
+    }
+    const expected = new Set(await snapshot(queryRunner, CHECK_SCHEMA));
+    const actual = new Set(await snapshot(queryRunner, 'public'));
+    await queryRunner.query(`DROP SCHEMA ${CHECK_SCHEMA} CASCADE`);
+    const missing = [...expected].filter((x) => !actual.has(x));
+    const extra = [...actual].filter((x) => !expected.has(x) && !x.startsWith('column migrations.') && !x.startsWith('constraint migrations.'));
+    if (missing.length || extra.length) {
+      const show = (a: string[]) => a.slice(0, 25).map((x) => '    ' + x).join('\n') + (a.length > 25 ? `\n    ... and ${a.length - 25} more` : '');
+      throw new Error(
+        `This database already has tables but they do not match the baseline schema, so nothing was changed.\n` +
+          (missing.length ? `  Missing or different in the database (${missing.length}):\n${show(missing)}\n` : '') +
+          (extra.length ? `  Extra in the database (${extra.length}):\n${show(extra)}\n` : '') +
+          `Use an empty database, or write a reconcile migration for this database.`,
+      );
+    }
+    console.log('[baseline] existing schema matches the baseline, adopted as is');
   }
 
   public async down(): Promise<void> {
