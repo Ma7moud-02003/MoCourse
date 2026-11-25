@@ -1,3 +1,4 @@
+import { assertFileProvided } from 'src/utils/upload-validation';
 import { BadRequestException, ConflictException, forwardRef, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CouurseDto } from './dtos/course.dto';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
@@ -45,6 +46,7 @@ export class CourseService {
      */
 
     public async addNewCourse(dto: CouurseDto, file: Express.Multer.File, insId: number) {
+        assertFileProvided(file, 'Thumbnail');
         const image = await this.cloudinaryServive.uploadFile(file, 'course/images', 'image');
         const course = this.courseRepo.create({
             title: dto.title,
