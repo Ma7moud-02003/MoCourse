@@ -9,17 +9,18 @@ describe('QuizAttemptService.startAttempt', () => {
   beforeEach(() => jest.useFakeTimers({ doNotFake: ['setTimeout', 'nextTick', 'setImmediate'] }).setSystemTime(new Date('2026-01-01T10:00:00Z')));
   afterEach(() => jest.useRealTimers());
 
-  it('first start creates the attempt with deadline = now + timeLimit minutes', async () => {
-    const { service, state } = build({ timeLimit: 30 });
+  it('first start creates the attempt with deadline = the exam closing time (not now + a duration)', async () => {
+    const { service, state } = build();
     const res = await service.startAttempt(10, 7);
     expect(res.resumed).toBe(false);
     expect(res.expiresAt.toISOString()).toBe('2026-01-01T10:30:00.000Z');
     expect(state.attempts).toHaveLength(1);
+    expect(state.attempts[0].expiresAt.toISOString()).toBe('2026-01-01T10:30:00.000Z');
     expect(state.attempts[0]).toMatchObject({ attemptNumber: 1, submitted: false, score: 0, submittedAt: null });
   });
 
   it('start again before the deadline resumes the same attempt and keeps the original deadline', async () => {
-    const { service, state } = build({ timeLimit: 30 });
+    const { service, state } = build();
     const first = await service.startAttempt(10, 7);
     jest.setSystemTime(new Date('2026-01-01T10:10:00Z'));
     const again = await service.startAttempt(10, 7);
@@ -46,7 +47,7 @@ describe('QuizAttemptService.startAttempt', () => {
   });
 
   it('after the deadline start does not resume: the attempt is closed with a 409 carrying the result', async () => {
-    const { service, state } = build({ timeLimit: 30 });
+    const { service, state } = build();
     await service.startAttempt(10, 7);
     jest.setSystemTime(new Date('2026-01-01T10:30:00Z'));
     const err: any = await service.startAttempt(10, 7).catch((e) => e);
@@ -90,5 +91,54 @@ describe('QuizAttemptService.startAttempt', () => {
   it('the attempt table has a unique rule on (quiz, user)', () => {
     const u = getMetadataArgsStorage().uniques.find((x) => x.target === QuizAttemptEntity);
     expect(u?.columns).toEqual(['quiz', 'user']);
+  });
+
+  it('a late entrant gets only the rest of the shared window', async () => {
+    const { service } = build({ opensAt: new Date('2026-01-01T09:00:00Z'), closesAt: new Date('2026-01-01T10:00:00Z') });
+    jest.setSystemTime(new Date('2026-01-01T09:30:00Z'));
+    const res = await service.startAttempt(10, 7);
+    expect(res.expiresAt.toISOString()).toBe('2026-01-01T10:00:00.000Z');
+  });
+
+  it('two students starting at different times share the same deadline', async () => {
+    const { service } = build();
+    const a = await service.startAttempt(10, 7);
+    jest.setSystemTime(new Date('2026-01-01T10:20:00Z'));
+    const b = await service.startAttempt(10, 8);
+    expect(a.expiresAt.getTime()).toBe(b.expiresAt.getTime());
+  });
+
+  it('before the exam opens: refused with 403, nothing created', async () => {
+    const { service, state } = build({ opensAt: new Date('2026-01-01T10:30:00Z'), closesAt: new Date('2026-01-01T11:30:00Z') });
+    await expect(service.startAttempt(10, 7)).rejects.toBeInstanceOf(ForbiddenException);
+    expect(state.attempts).toHaveLength(0);
+  });
+
+  it('exactly at opening time is allowed', async () => {
+    const { service } = build({ opensAt: new Date('2026-01-01T10:00:00Z') });
+    await expect(service.startAttempt(10, 7)).resolves.toMatchObject({ resumed: false });
+  });
+
+  it('after the exam closes with no attempt: 409 and no attempt (so no zero result) is created', async () => {
+    const { service, state } = build();
+    jest.setSystemTime(new Date('2026-01-01T10:30:00Z'));
+    await expect(service.startAttempt(10, 7)).rejects.toBeInstanceOf(ConflictException);
+    expect(state.attempts).toHaveLength(0);
+  });
+
+  it('an exam with no window (old exam) cannot be started', async () => {
+    const { service, state } = build({ opensAt: null, closesAt: null });
+    await expect(service.startAttempt(10, 7)).rejects.toBeInstanceOf(ConflictException);
+    expect(state.attempts).toHaveLength(0);
+  });
+
+  it('re-entry after close with an unfinished attempt still grades it (409 with result)', async () => {
+    const { service, state } = build();
+    await service.startAttempt(10, 7);
+    jest.setSystemTime(new Date('2026-01-01T10:45:00Z'));
+    const err: any = await service.startAttempt(10, 7).catch((e) => e);
+    expect(err).toBeInstanceOf(ConflictException);
+    expect(err.getResponse().result).toMatchObject({ submitted: true });
+    expect(state.attempts[0].submitted).toBe(true);
   });
 });
