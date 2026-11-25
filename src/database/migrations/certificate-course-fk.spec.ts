@@ -2,11 +2,11 @@ import { CertificateCourseFk1764000000003 } from './1764000000003-CertificateCou
 
 const USERS_FK = {
   conname: 'FK_e50e73bc3bdcfb0eb3d561f1494',
-  def: 'FOREIGN KEY ("courseId") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION',
+  def: 'FOREIGN KEY ("courseId") REFERENCES users(id) ON DELETE NO ACTION ON UPDATE NO ACTION',
 };
 const COURSES_FK = {
   conname: 'FK_e50e73bc3bdcfb0eb3d561f1494',
-  def: 'FOREIGN KEY ("courseId") REFERENCES "courses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION',
+  def: 'FOREIGN KEY ("courseId") REFERENCES courses(id) ON DELETE NO ACTION ON UPDATE NO ACTION',
 };
 
 type Scenario = {
