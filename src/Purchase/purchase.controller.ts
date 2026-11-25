@@ -1,3 +1,4 @@
+import { MAX_PAYMENT_PROOF_BYTES } from 'src/utils/upload-validation';
 import {
     Body, Controller, Get, Param,
     ParseIntPipe, Patch, Post, Query, UploadedFile,
@@ -33,7 +34,7 @@ export class PurchaseController {
     @Patch('confirm/:id')
     @Roles(UserRoles.STUDENT)
     @UseGuards(AuthGuard, Roleguard)
-    @UseInterceptors(FileInterceptor('thumbnail'))
+    @UseInterceptors(FileInterceptor('thumbnail', { limits: { fileSize: MAX_PAYMENT_PROOF_BYTES + 1 } }))
     confirmCheckout(@Param('id', new ParseIntPipe()) id: number
         , @Body() body: ConfirmCheckoutDto, @UploadedFile() file: any
         , @Payload() payload: paylodType.PayloadType) {
