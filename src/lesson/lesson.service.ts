@@ -1,7 +1,8 @@
+import { pdfMaxBytes } from 'src/common/upload/upload.config';
 import { readFile } from 'fs/promises';
 import { assertPdfFile } from 'src/utils/upload-validation';
 import { BadRequestException, ForbiddenException, forwardRef, Inject, Injectable,
-NotFoundException, UnauthorizedException } from '@nestjs/common';
+NotFoundException, PayloadTooLargeException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessonsEntity } from './lessons.entity';
 import { assertNoExamAttempts } from 'src/quiz/exam-guard';
@@ -158,6 +159,8 @@ export class LessonService {
                 break
             }
             case LessonType.PDF: {
+                // PDFs have their own limit (PDF_MAX_UPLOAD_BYTES), checked before the file is read into memory
+                if ((file.size ?? file.buffer?.length ?? 0) > pdfMaxBytes()) throw new PayloadTooLargeException('PDF is too large');
                 if (file.path && !file.buffer) file = { ...file, buffer: await readFile(file.path) };
                 assertPdfFile(file);
                 resulte = await this.cloudinaryService.uploadFile(file, 'course/pdfs', 'raw');
