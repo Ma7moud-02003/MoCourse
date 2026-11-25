@@ -32,6 +32,7 @@ export class QuizEntity {
     @Column({ type: 'timestamptz', nullable: true })
     closesAt!: Date | null;
 
+    /** Not used: one attempt per student, first result stands. Kept so old data and clients keep working. */
     @Column({ default: 1 })
     maxAttempts!: number;
 
@@ -48,6 +49,7 @@ export class QuizEntity {
     @Column({ type: 'text', nullable: true })
     instructions!: string;
 
+    /** Not used: the result is always visible after submit. Kept so old data and clients keep working. */
     @Column({ default: false })
     showResultImmediately!: boolean;
 
