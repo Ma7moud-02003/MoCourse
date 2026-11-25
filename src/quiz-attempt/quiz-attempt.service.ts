@@ -1,6 +1,6 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, LessThanOrEqual, Repository } from 'typeorm';
 import { QuizAttemptEntity } from './quiz-attemp.entity';
 import { QuizEntity } from 'src/quiz/quiz.entity';
 import { QuestionEntity } from 'src/question/question.entity';
@@ -150,6 +150,33 @@ export class QuizAttemptService {
       throw new ConflictException({ message: 'Time has ended, your saved answers were submitted', result: outcome.result });
     }
     return { attemptId, questionId, choiceId, expiresAt: outcome.expiresAt, serverNow: outcome.now };
+  }
+
+  /**
+   * Background sweep: grade and close attempts whose deadline passed without a submit.
+   * Oldest deadline first, at most `limit` per call, each in its own transaction so one
+   * failure does not block the rest. Safe to run on several instances at once: finalize
+   * locks the attempt row and returns early if it is already submitted.
+   */
+  public async closeExpiredAttempts(limit = 100) {
+    const now = new Date();
+    const due = await this.attemptRepo.find({
+      where: { submitted: false, expiresAt: LessThanOrEqual(now) },
+      loadRelationIds: true,
+      order: { expiresAt: 'ASC' },
+      take: limit,
+    });
+    let closed = 0;
+    let failed = 0;
+    for (const a of due) {
+      try {
+        await this.attemptRepo.manager.transaction((m) => this.finalize(m, a.id, a.quiz as any as number, new Date()));
+        closed++;
+      } catch {
+        failed++;
+      }
+    }
+    return { found: due.length, closed, failed, hasMore: due.length === limit };
   }
 
   /**
