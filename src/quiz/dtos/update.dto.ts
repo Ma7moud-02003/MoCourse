@@ -1,6 +1,8 @@
 import {
   IsBoolean,
   IsInt,
+  IsISO8601,
+  Matches,
   IsOptional,
   IsString,
   Max,
@@ -20,7 +22,7 @@ export class UpdateQuizDto {
 
   @IsOptional()
   @IsInt()
-  @Min(1)
+  @Min(0)
   @Max(100)
   passMark?: number;
 
@@ -28,6 +30,16 @@ export class UpdateQuizDto {
   @IsInt()
   @Min(1)
   timeLimit?: number;
+
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  @Matches(/(Z|[+-]\d{2}:?\d{2})$/i, { message: 'opensAt must include a time zone offset' })
+  opensAt?: string;
+
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  @Matches(/(Z|[+-]\d{2}:?\d{2})$/i, { message: 'closesAt must include a time zone offset' })
+  closesAt?: string;
 
   @IsOptional()
   @IsInt()

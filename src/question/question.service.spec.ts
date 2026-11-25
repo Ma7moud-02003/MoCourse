@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { QuestionService } from './question.service';
 
 function build() {
@@ -15,6 +15,7 @@ function build() {
     save: jest.fn(async (x) => x),
     findOne: jest.fn(async () => ({ id: 10 })),
     sum: jest.fn(async () => 7),
+    count: jest.fn(async () => 0),
     update: jest.fn(),
   };
   const repo: any = {
@@ -138,5 +139,23 @@ describe('choice rules on update', () => {
     const { service } = build();
     const res: any = await service.updateQuestion(3, 1, { mark: 4 } as any);
     expect(res.mark).toBe(4);
+  });
+});
+
+describe('update is blocked once a student started', () => {
+  it('rejects any question update (mark, text, choices) when attempts exist', async () => {
+    const { service, manager } = build();
+    manager.count.mockResolvedValue(1);
+    for (const dto of [{ mark: 5 }, { question: 'x' }, { choices: [{ id: 100 }, { id: 101 }] }]) {
+      await expect(service.updateQuestion(3, 1, dto as any)).rejects.toBeInstanceOf(ConflictException);
+    }
+    expect(manager.save).not.toHaveBeenCalled();
+    expect(manager.remove).not.toHaveBeenCalled();
+  });
+
+  it('locks the exam row before checking attempts', async () => {
+    const { service, manager } = build();
+    await service.updateQuestion(3, 1, { mark: 2 } as any);
+    expect(manager.findOne.mock.calls[0][1].lock).toEqual({ mode: 'pessimistic_write' });
   });
 });

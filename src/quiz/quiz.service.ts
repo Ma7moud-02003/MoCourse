@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QuizEntity } from './quiz.entity';
 import { Repository } from 'typeorm';
@@ -8,6 +8,8 @@ import { CourseEntity } from 'src/course/course.entity';
 import { EnrollmentService } from 'src/enrollment/enrollment.service';
 import { UpdateQuizDto } from './dtos/update.dto';
 import { QuestionEntity } from 'src/question/question.entity';
+import { checkWindow, parseInstant, windowMinutes } from './exam-window';
+import { QuizAttemptEntity } from 'src/quiz-attempt/quiz-attemp.entity';
 
 
 @Injectable()
@@ -36,11 +38,16 @@ export class QuizService {
       throw new BadRequestException(); }
     let course: CourseEntity | undefined;
     let quiz: QuizEntity;
+    const opensAt = parseInstant(dto.opensAt, 'opensAt');
+    const closesAt = parseInstant(dto.closesAt, 'closesAt');
+    checkWindow(opensAt, closesAt);
     const quizData = {
       title: dto.title,
       description: dto.description,
       passMark: dto.passMark,
-      timeLimit: dto.timeLimit,
+      timeLimit: dto.timeLimit ?? windowMinutes(opensAt, closesAt),
+      opensAt,
+      closesAt,
       maxAttempts: dto.maxAttempts,
       shuffleQuestions: dto.shuffleQuestions,
       shuffleChoices: dto.shuffleChoices,
@@ -94,6 +101,12 @@ export class QuizService {
     throw new NotFoundException('Quiz not found');
   }
 
+  // once any student started, the exam and its settings are frozen
+  const attempts = await manager.count(QuizAttemptEntity, { where: { quiz: { id: quizId } } });
+  if (attempts > 0) {
+    throw new ConflictException('Students already started this exam, so its settings can no longer change');
+  }
+
   if (dto.title !== undefined) {
     quiz.title = dto.title;
   }
@@ -108,6 +121,15 @@ export class QuizService {
 
   if (dto.timeLimit !== undefined) {
     quiz.timeLimit = dto.timeLimit;
+  }
+
+  if (dto.opensAt !== undefined || dto.closesAt !== undefined) {
+    const opensAt = dto.opensAt !== undefined ? parseInstant(dto.opensAt, 'opensAt') : quiz.opensAt;
+    const closesAt = dto.closesAt !== undefined ? parseInstant(dto.closesAt, 'closesAt') : quiz.closesAt;
+    if (!opensAt || !closesAt) throw new BadRequestException('Set both opensAt and closesAt');
+    checkWindow(opensAt, closesAt);
+    quiz.opensAt = opensAt;
+    quiz.closesAt = closesAt;
   }
 
   if (dto.maxAttempts !== undefined) {
@@ -132,6 +154,9 @@ export class QuizService {
       if (questionsCount === 0) {
         throw new BadRequestException('Add at least one question before publishing the exam');
       }
+    }
+    if (dto.isPublished && (!quiz.opensAt || !quiz.closesAt)) {
+      throw new BadRequestException('Set the exam opening and closing time before publishing');
     }
     quiz.isPublished = dto.isPublished;
   }

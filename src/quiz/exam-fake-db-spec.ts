@@ -1,12 +1,13 @@
 // Tiny in-memory stand-in for the DB used by the exam tests.
 // transaction(): the quiz row lock is held until the transaction ends, like pessimistic_write.
 import { QuestionEntity } from 'src/question/question.entity';
+import { QuizAttemptEntity } from 'src/quiz-attempt/quiz-attemp.entity';
 
 const tick = () => new Promise((r) => setTimeout(r, 1));
 
-export function fakeExamDb(opts: { published: boolean; questionIds: number[]; ownerId?: number; marks?: Record<number, number> }) {
+export function fakeExamDb(opts: { published: boolean; questionIds: number[]; ownerId?: number; marks?: Record<number, number>; attempts?: number }) {
   const state = {
-    quiz: { id: 10, isPublished: opts.published, title: 'Quiz', course: { Instractor: { id: opts.ownerId ?? 3 } } } as any,
+    quiz: { id: 10, isPublished: opts.published, title: 'Quiz', opensAt: new Date('2099-01-01T07:00:00Z'), closesAt: new Date('2099-01-01T08:00:00Z'), course: { Instractor: { id: opts.ownerId ?? 3 } } } as any,
     questions: [...opts.questionIds],
     marks: { ...(opts.marks ?? {}) } as Record<number, number>,
   };
@@ -26,8 +27,9 @@ export function fakeExamDb(opts: { published: boolean; questionIds: number[]; ow
         await tick();
         return { ...state.quiz };
       },
-      count: async (_entity: any) => {
+      count: async (entity: any) => {
         await tick();
+        if (entity === QuizAttemptEntity) return opts.attempts ?? 0;
         return state.questions.length;
       },
       sum: async (_entity: any, _col: string) => {

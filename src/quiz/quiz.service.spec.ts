@@ -19,7 +19,7 @@ function build(opts: { owns?: boolean; enrolled?: boolean } = {}) {
 }
 
 const dto: any = {
-  title: 'Quiz', courseId: 5, passMark: 60, timeLimit: 10, quizTarget: 'course',
+  title: 'Quiz', courseId: 5, passMark: 60, timeLimit: 10, quizTarget: 'course', opensAt: '2099-01-01T09:00:00+02:00', closesAt: '2099-01-01T10:00:00+02:00',
 };
 
 describe('QuizService', () => {

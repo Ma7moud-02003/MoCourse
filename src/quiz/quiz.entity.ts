@@ -23,7 +23,14 @@ export class QuizEntity {
     passMark!: number;
 
     @Column()
-    timeLimit!: number; // بالدقائق
+    timeLimit!: number; // بالدقائق (informational: the deadline is closesAt)
+
+    // fixed exam window set by the teacher (UTC instants). Null on old exams: they cannot be started.
+    @Column({ type: 'timestamptz', nullable: true })
+    opensAt!: Date | null;
+
+    @Column({ type: 'timestamptz', nullable: true })
+    closesAt!: Date | null;
 
     @Column({ default: 1 })
     maxAttempts!: number;

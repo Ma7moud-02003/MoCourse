@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QuestionEntity } from './question.entity';
 import { Repository } from 'typeorm';
@@ -9,6 +9,15 @@ import { ChoiceEntity } from 'src/choice/choise.entity';
 import { QuizEntity } from 'src/quiz/quiz.entity';
 import { syncTotalMarks } from 'src/quiz/total-marks';
 import { validateChoices } from './question-rules';
+import { QuizAttemptEntity } from 'src/quiz-attempt/quiz-attemp.entity';
+
+const EXAM_STARTED = 'Students already started this exam, so its questions, choices and marks can no longer change';
+
+// call inside the transaction, right after the exam row is locked
+async function assertNoAttempts(manager: any, quizId: number) {
+    const attempts = await manager.count(QuizAttemptEntity, { where: { quiz: { id: quizId } } });
+    if (attempts > 0) throw new ConflictException(EXAM_STARTED);
+}
 
 
 @Injectable()
@@ -51,6 +60,7 @@ return this.repo.manager.transaction(async (manager) => {
         lock: { mode: 'pessimistic_write' },
     });
     if (!quiz) throw new NotFoundException('Quiz not found');
+    await assertNoAttempts(manager, dto.quizId);
     const saved = await manager.save(questions);
     await syncTotalMarks(manager, dto.quizId);
     return saved;
@@ -80,6 +90,12 @@ public async updateQuestion(insId: number, questionId: number, dto: UpdateQuesti
   }
 
   return this.repo.manager.transaction(async (manager) => {
+    // lock the exam row first, then refuse if any student already started
+    await manager.findOne(QuizEntity, {
+      where: { id: existingQuestion.quiz.id },
+      lock: { mode: 'pessimistic_write' },
+    });
+    await assertNoAttempts(manager, existingQuestion.quiz.id);
     const markBefore = existingQuestion.mark;
     existingQuestion.question = dto.question ?? existingQuestion.question;
     existingQuestion.type = dto.type ?? existingQuestion.type;
@@ -136,10 +152,6 @@ public async updateQuestion(insId: number, questionId: number, dto: UpdateQuesti
 
     const saved = await manager.save(existingQuestion);
     if (existingQuestion.mark !== markBefore) {
-      await manager.findOne(QuizEntity, {
-        where: { id: existingQuestion.quiz.id },
-        lock: { mode: 'pessimistic_write' },
-      });
       await syncTotalMarks(manager, existingQuestion.quiz.id);
     }
     return saved;
@@ -169,6 +181,7 @@ if(!question) throw new NotFoundException();
       lock: { mode: 'pessimistic_write' },
     });
     if (!quiz) throw new NotFoundException();
+    await assertNoAttempts(manager, quiz.id);
     if (quiz.isPublished) {
       const questionsCount = await manager.count(QuestionEntity, { where: { quiz: { id: quiz.id } } });
       if (questionsCount <= 1) {
