@@ -1,7 +1,7 @@
-import { BadGatewayException, BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ReviewEntity } from './review.enity';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { CreatCommentDto } from './dtos/cret-comment.dto';
 import { CourseService } from 'src/course/course.service';
 import { UserService } from 'src/User/user/user.service';
@@ -31,13 +31,27 @@ private enrollmentService:EnrollmentService
  * @returns  added successfully
  */
 public async addNewComment(courseId:number,userId:number,dto:CreatCommentDto){
-if(!courseId||!userId||!dto.comment||!dto.rateing) throw new BadGatewayException();
+if(!courseId||!userId||!dto.comment||dto.rateing===undefined||dto.rateing===null) throw new BadRequestException('Required values are missing');
 const verify=await this.verify(courseId,userId);
 if(!verify) throw new UnauthorizedException('You Need TO Purshace This Course Frist');
+// one review per student per course: a changed opinion edits the existing review (owner-approved rule)
+const existing=await this.reviewRepo.findOne({where:{user:{id:userId},course:{id:courseId}}});
+if(existing) throw new ConflictException('You already reviewed this course. Update your existing review instead.');
+// pick the allowed fields explicitly: the global ValidationPipe runs without whitelist, so
+// spreading the body would let an injected id turn this insert into an update of someone else's review
 const review=this.reviewRepo.create({
-    ...dto,user:{id:userId},course:{id:courseId}
+    comment:dto.comment,rateing:dto.rateing,user:{id:userId},course:{id:courseId}
 });
-const resulte=await this.reviewRepo.save(review);
+let resulte:ReviewEntity;
+try{
+resulte=await this.reviewRepo.save(review);
+}catch(err){
+// a concurrent submission of the same student/course pair hits the unique rule: same answer as the check above
+if(err instanceof QueryFailedError&&(err.driverError as {code?:string})?.code=='23505'){
+throw new ConflictException('You already reviewed this course. Update your existing review instead.');
+}
+throw err;
+}
 return {
 id:resulte.id,
 comment:resulte.comment,
@@ -57,7 +71,7 @@ public async updateComment(reviewId:number,courseId:number,userId:number,dto:Upd
 if(!courseId||!userId||!reviewId) throw new BadRequestException();
 const verify=await this.verify(courseId,userId);
 if(!verify) throw new UnauthorizedException('You Need TO Purshace This Course Frist');
-const review=await this.reviewRepo.findOne({where:{id:reviewId}});
+const review=await this.reviewRepo.findOne({where:{id:reviewId,course:{id:courseId}}});
 if(!review) throw new NotFoundException();
 const allowedStudent=await this.isStudentOwnsComment(userId,reviewId);
 if(!allowedStudent) throw new UnauthorizedException();
@@ -78,15 +92,16 @@ message:'Updated Successfully'
  * @returns removed successfully message 
  */
 public async deleteReview(reviewId:number,courseId:number,payload:PayloadType){
-if(!courseId||!payload.id||!reviewId) throw new BadGatewayException();
-const review=await this.reviewRepo.findOne({where:{id:reviewId},relations:{user:true},select:{user:{id:true}}});
+if(!courseId||!payload.id||!reviewId) throw new BadRequestException('Required values are missing');
+const review=await this.reviewRepo.findOne({where:{id:reviewId,course:{id:courseId}},relations:{user:true},select:{user:{id:true}}});
 if(!review) throw new NotFoundException();
 
-const course=await this.courseService.getSingleCourse(courseId);
 if(payload.role!=UserRoles.ADMIN){
-if((course.Instractor.id!=payload.id&&payload.role!=UserRoles.INSTRACTOR)){
-const studentAllowed=await this.isStudentOwnsComment(payload.id,reviewId);
-if(!studentAllowed) throw new UnauthorizedException();
+const course=await this.courseService.getSingleCourse(courseId);
+const isCourseInstractor=payload.role==UserRoles.INSTRACTOR&&course.Instractor.id==payload.id;
+if(!isCourseInstractor){
+const isOwnStudentReview=payload.role==UserRoles.STUDENT&&review.user.id==payload.id;
+if(!isOwnStudentReview) throw new UnauthorizedException();
 }}
 await this.reviewRepo.remove(review);
  return {
@@ -124,8 +139,8 @@ if(!courseId) throw new NotFoundException();
 async verify(courseId:number,userId:number){
 const course=await this.courseService.getSingleCourse(courseId);
 if(!course) throw new BadRequestException('Course is not found');
-const user=await this.userService.getInstractorInfo(userId);
-if(!user||user.personalInfo.role==UserRoles.INSTRACTOR) throw new UnauthorizedException();
+const role=await this.userService.getUserRole(userId);
+if(role==UserRoles.INSTRACTOR) throw new UnauthorizedException();
 const verifyed=await this.enrollmentService.verifyStudentEnrollment(userId,courseId);
 return  !!verifyed;
 }
@@ -140,7 +155,7 @@ const has=await this.reviewRepo.findOne({
 return !! has;
 }
 
-async isStudentOwnsComment(studentId:number,reviewId){
+async isStudentOwnsComment(studentId:number,reviewId:number){
 if(!studentId) throw new BadRequestException('User is not found');
 const review=await this.reviewRepo.findOne({
     where:{id:reviewId,user:{id:studentId}}

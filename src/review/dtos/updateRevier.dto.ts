@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, Length, Max, Min } from "class-validator";
+import { IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Length, Max, Min } from "class-validator";
 
 export class UpdateCommentDto{
 
@@ -8,6 +8,7 @@ export class UpdateCommentDto{
     comment!:string;
     @IsOptional()
     @IsNumber()
+    @IsInt()
     @Min(0)
     @Max(5)
     rateing!:number

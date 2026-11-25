@@ -1,15 +1,16 @@
 import { CourseEntity } from "src/course/course.entity";
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
-import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
 import { UserEntity } from "src/User/user.entity";
 
 @Entity({name:'reviews'})
+@Unique('UQ_reviews_user_course',['user','course'])
 export class ReviewEntity {
 
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @Column({ length: 150 })
+    @Column({ length: 200 })
     comment!: string;
 
     @Column()
