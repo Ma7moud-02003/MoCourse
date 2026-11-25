@@ -51,15 +51,19 @@ public uploadFile(
      */
     public uploadVideoFromPath(path: string, folder: string): Promise<{ url: string; publicId: string; durationSeconds: number }> {
         return new Promise((resolve, reject) => {
+            let input: ReturnType<typeof createReadStream>;
             const out = cloudinary.uploader.upload_chunked_stream(
                 { folder, resource_type: 'video' },
                 (error, result) => {
-                    if (error) return reject(error);
+                    if (error) {
+                        input?.destroy(); // release the file handle on provider failure
+                        return reject(error);
+                    }
                     const r = result as UploadApiResponse;
                     resolve({ url: r.secure_url, publicId: r.public_id, durationSeconds: Math.round(r.duration) });
                 },
             );
-            const input = createReadStream(path);
+            input = createReadStream(path);
             input.on('error', reject);
             input.pipe(out);
         });
