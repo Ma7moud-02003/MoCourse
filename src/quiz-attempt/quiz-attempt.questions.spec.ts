@@ -45,6 +45,7 @@ describe('QuizAttemptService.getQuestions', () => {
 describe('QuizAttemptService.getExamResults ownership', () => {
   it('only the owning instructor', async () => {
     await expect(build({ ownerId: 3 }).getExamResults(10, 99)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(build({ ownerId: 3 }).getExamResults(10, 99, 1, 20, false)).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
 
@@ -68,6 +69,7 @@ describe('getExamResults when more attempts are due than one request grades', ()
     const quizRepo: any = { findOne: jest.fn(async () => ({ id: 10, passMark: 50, course: { Instractor: { id: 3 } } })) };
     const svc: any = new QuizAttemptService({ manager } as any, quizRepo, {} as any);
     svc.totalMarksOf = jest.fn(async () => 5);
+    svc.notStartedOf = jest.fn(async () => ({ count: 0, students: [] }));
     return svc as QuizAttemptService;
   }
   it('ungraded expired attempts are pending_grading with null score, never zero or failed, and not in the average', async () => {
@@ -83,5 +85,38 @@ describe('getExamResults when more attempts are due than one request grades', ()
   it('complete is true once nothing is pending', async () => {
     const r: any = await svcWith(0).getExamResults(10, 3);
     expect(r.summary.complete).toBe(true);
+  });
+});
+
+describe('getExamResults admin access and students who never started', () => {
+  const past = new Date(Date.now() - 60e3);
+  function svc(closesAt: Date | null) {
+    const manager: any = {
+      transaction: jest.fn(async () => undefined),
+      find: jest.fn(async () => []),
+      count: jest.fn(async () => 0),
+      findAndCount: jest.fn(async () => [[], 0]),
+      sum: jest.fn(async () => 0),
+    };
+    const quizRepo: any = { findOne: jest.fn(async () => ({ id: 10, passMark: 50, closesAt, course: { id: 5, Instractor: { id: 3 } } })) };
+    const s: any = new QuizAttemptService({ manager } as any, quizRepo, {} as any);
+    s.totalMarksOf = jest.fn(async () => 5);
+    s.notStartedOf = jest.fn(async () => ({ count: 120, students: [{ id: 9, fullName: 'N', email: 'n@x' }] }));
+    return s as QuizAttemptService;
+  }
+  it('an admin who does not own the course can read the results', async () => {
+    const r: any = await svc(past).getExamResults(10, 99, 1, 20, true);
+    expect(r.quizId).toBe(10);
+  });
+  it('a non-owner non-admin is still refused', async () => {
+    await expect(svc(past).getExamResults(10, 99, 1, 20, false)).rejects.toBeInstanceOf(ForbiddenException);
+  });
+  it('never-started students: did_not_attempt after close, not_started before, no score, truncation flagged, not counted as attempts', async () => {
+    const closed: any = await svc(past).getExamResults(10, 3);
+    expect(closed.notStarted).toMatchObject({ count: 120, truncated: true });
+    expect(closed.notStarted.students[0]).toMatchObject({ status: 'did_not_attempt', score: null, passed: null, percentage: null });
+    expect(closed.summary.attempts).toBe(0);
+    const open: any = await svc(new Date(Date.now() + 3600e3)).getExamResults(10, 3);
+    expect(open.notStarted.students[0].status).toBe('not_started');
   });
 });
