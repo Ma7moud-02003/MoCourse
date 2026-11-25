@@ -10,7 +10,7 @@ fullName:string|undefined;
 
 
 @MinLength(6)
-@MinLength(150)
+@MaxLength(150)
 @IsString() 
 @IsOptional()
 password:string|undefined;
