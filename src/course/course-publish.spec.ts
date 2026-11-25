@@ -124,6 +124,13 @@ describe('purchase and lessons on a draft course', () => {
     await expect(s.getSectiionLessons(2, STRANGER)).rejects.toThrow(NotFoundException);
     await expect(s.getSectiionLessons(2, ENROLLED)).resolves.toEqual([]);
   });
+  it('draft course: admin can list lessons and open a preview, still not paid content', async () => {
+    const s = lessons(false, { ...base, isPreview: true });
+    await expect(s.getSectiionLessons(2, 99, UserRoles.ADMIN)).resolves.toEqual([]);
+    await expect(s.getLesson(1, 99, UserRoles.ADMIN)).resolves.toBeTruthy();
+    const t = lessons(false, { ...base, isPreview: false });
+    await expect(t.getLesson(1, 99, UserRoles.ADMIN)).rejects.toThrow();
+  });
   it('published course: preview open to anyone, non-preview needs enrollment', async () => {
     const s = lessons(true, { ...base, isPreview: true });
     await expect(s.getLesson(1, STRANGER)).resolves.toBeTruthy();
