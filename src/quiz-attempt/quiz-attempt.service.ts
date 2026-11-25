@@ -5,6 +5,7 @@ import { QuizAttemptEntity } from './quiz-attemp.entity';
 import { QuizEntity } from 'src/quiz/quiz.entity';
 import { QuestionEntity } from 'src/question/question.entity';
 import { StudentAnswerEntity } from 'src/student-answer/student_answer.entity';
+import { ChoiceEntity } from 'src/choice/choise.entity';
 import { EnrollmentService } from 'src/enrollment/enrollment.service';
 
 export type AttemptResult = {
@@ -66,7 +67,8 @@ export class QuizAttemptService {
 
       if (existing) {
         if (!existing.submitted && existing.expiresAt.getTime() > now.getTime()) {
-          return { kind: 'resumed' as const, attempt: existing, now };
+          const saved = await manager.find(StudentAnswerEntity, { where: { attempt: { id: existing.id } }, loadRelationIds: true, order: { id: 'ASC' } });
+          return { kind: 'resumed' as const, attempt: existing, now, answers: saved.map((a) => ({ questionId: a.question as any as number, choiceId: a.choice as any as number })) };
         }
         const result = await this.finalize(manager, existing.id, quizId, now);
         return { kind: 'finished' as const, result };
@@ -83,7 +85,7 @@ export class QuizAttemptService {
         submittedAt: null,
       });
       const saved = await manager.save(attempt);
-      return { kind: 'created' as const, attempt: saved, now };
+      return { kind: 'created' as const, attempt: saved, now, answers: [] as { questionId: number; choiceId: number }[] };
     });
 
     if (outcome.kind === 'finished') {
@@ -92,7 +94,7 @@ export class QuizAttemptService {
         result: outcome.result,
       });
     }
-    return this.toResponse(outcome.attempt, quizId, outcome.kind === 'resumed', outcome.now);
+    return this.toResponse(outcome.attempt, quizId, outcome.kind === 'resumed', outcome.now, outcome.answers);
   }
 
   /**
@@ -110,6 +112,44 @@ export class QuizAttemptService {
       if (!attempt || (attempt.user as any) !== studentId) throw new NotFoundException('Attempt not found');
       return this.finalize(manager, attemptId, attempt.quiz as any, new Date());
     });
+  }
+
+  /**
+   * Save (or change) the student's selected choice for one question.
+   * One row per (attempt, question): a change updates it. Locks the attempt row, so it
+   * is serialized with submit/auto-submit: an answer either lands before grading or is refused.
+   * After the deadline nothing is saved; the attempt is graded and closed (409 with result).
+   */
+  public async saveAnswer(attemptId: number, studentId: number, questionId: number, choiceId: number) {
+    const outcome = await this.attemptRepo.manager.transaction(async (manager) => {
+      const attempt = await manager.findOne(QuizAttemptEntity, {
+        where: { id: attemptId },
+        loadRelationIds: true,
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!attempt || (attempt.user as any) !== studentId) throw new NotFoundException('Attempt not found');
+      const quizId = attempt.quiz as any as number;
+      const now = new Date();
+
+      if (attempt.submitted) throw new ConflictException('This attempt is already submitted');
+      if (attempt.expiresAt.getTime() <= now.getTime()) {
+        return { kind: 'finished' as const, result: await this.finalize(manager, attemptId, quizId, now) };
+      }
+
+      const question = await manager.findOne(QuestionEntity, { where: { id: questionId, quiz: { id: quizId } } });
+      if (!question) throw new NotFoundException('Question not found in this exam');
+      const choice = await manager.findOne(ChoiceEntity, { where: { id: choiceId, question: { id: questionId } } });
+      if (!choice) throw new NotFoundException('Choice not found for this question');
+
+      const existing = await manager.findOne(StudentAnswerEntity, { where: { attempt: { id: attemptId }, question: { id: questionId } } });
+      if (existing) await manager.update(StudentAnswerEntity, existing.id, { choice: { id: choiceId } });
+      else await manager.insert(StudentAnswerEntity, { attempt: { id: attemptId }, question: { id: questionId }, choice: { id: choiceId } });
+      return { kind: 'saved' as const, expiresAt: attempt.expiresAt, now };
+    });
+    if (outcome.kind === 'finished') {
+      throw new ConflictException({ message: 'Time has ended, your saved answers were submitted', result: outcome.result });
+    }
+    return { attemptId, questionId, choiceId, expiresAt: outcome.expiresAt, serverNow: outcome.now };
   }
 
   /**
@@ -180,7 +220,7 @@ export class QuizAttemptService {
     };
   }
 
-  private toResponse(a: QuizAttemptEntity, quizId: number, resumed: boolean, now: Date) {
+  private toResponse(a: QuizAttemptEntity, quizId: number, resumed: boolean, now: Date, answers: { questionId: number; choiceId: number }[]) {
     return {
       attemptId: a.id,
       quizId,
@@ -188,6 +228,8 @@ export class QuizAttemptService {
       expiresAt: a.expiresAt,
       serverNow: now,
       resumed,
+      // only the student's own saved selections; never whether they are correct
+      answers,
     };
   }
 }
