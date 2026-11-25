@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, DefaultValuePipe, Get, Param, ParseIntPipe, Query, Post, Put, UseGuards } from '@nestjs/common';
 import { SaveAnswerDto } from './dto/save-answer.dto';
 import { QuizAttemptService } from './quiz-attempt.service';
 import { Payload } from 'src/common/Decorators/payload.decorator';
@@ -42,5 +42,24 @@ export class QuizAttemptController {
   @Get(':attemptId/result')
   result(@Param('attemptId', new ParseIntPipe()) attemptId: number, @Payload() payload: paylodType.PayloadType) {
     return this.attemptService.getResult(attemptId, payload.id);
+  }
+
+  @Roles(UserRoles.STUDENT)
+  @UseGuards(AuthGuard, Roleguard)
+  @Get(':attemptId/questions')
+  questions(@Param('attemptId', new ParseIntPipe()) attemptId: number, @Payload() payload: paylodType.PayloadType) {
+    return this.attemptService.getQuestions(attemptId, payload.id);
+  }
+
+  @Roles(UserRoles.INSTRACTOR)
+  @UseGuards(AuthGuard, Roleguard)
+  @Get('exam/:quizId/results')
+  examResults(
+    @Param('quizId', new ParseIntPipe()) quizId: number,
+    @Query('page', new DefaultValuePipe(1), new ParseIntPipe()) page: number,
+    @Query('limit', new DefaultValuePipe(20), new ParseIntPipe()) limit: number,
+    @Payload() payload: paylodType.PayloadType,
+  ) {
+    return this.attemptService.getExamResults(quizId, payload.id, page, limit);
   }
 }
