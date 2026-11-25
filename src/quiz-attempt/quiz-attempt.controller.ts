@@ -17,4 +17,11 @@ export class QuizAttemptController {
   start(@Param('quizId', new ParseIntPipe()) quizId: number, @Payload() payload: paylodType.PayloadType) {
     return this.attemptService.startAttempt(quizId, payload.id);
   }
+
+  @Roles(UserRoles.STUDENT)
+  @UseGuards(AuthGuard, Roleguard)
+  @Post(':attemptId/submit')
+  submit(@Param('attemptId', new ParseIntPipe()) attemptId: number, @Payload() payload: paylodType.PayloadType) {
+    return this.attemptService.submitAttempt(attemptId, payload.id);
+  }
 }
