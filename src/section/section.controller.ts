@@ -27,7 +27,7 @@ export class SectionController {
     @UseGuards(AuthGuard)
     getAll(@Param('id',new ParseIntPipe) id:number,
     @Query('pageNumber') pageNumber:number,@Payload() payload:paylodType.PayloadType){
-     return  this.sectionService.getCourseSections(id,payload.id,pageNumber);
+     return  this.sectionService.getCourseSections(id,payload.id,pageNumber,payload.role);
     }
 
     @Patch('update/:id')
