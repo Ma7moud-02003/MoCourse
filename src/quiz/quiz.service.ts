@@ -8,6 +8,7 @@ import { CourseEntity } from 'src/course/course.entity';
 import { EnrollmentService } from 'src/enrollment/enrollment.service';
 import { UpdateQuizDto } from './dtos/update.dto';
 import { QuestionEntity } from 'src/question/question.entity';
+import { checkWindow, parseInstant, windowMinutes } from './exam-window';
 import { QuizAttemptEntity } from 'src/quiz-attempt/quiz-attemp.entity';
 
 
@@ -37,11 +38,16 @@ export class QuizService {
       throw new BadRequestException(); }
     let course: CourseEntity | undefined;
     let quiz: QuizEntity;
+    const opensAt = parseInstant(dto.opensAt, 'opensAt');
+    const closesAt = parseInstant(dto.closesAt, 'closesAt');
+    checkWindow(opensAt, closesAt);
     const quizData = {
       title: dto.title,
       description: dto.description,
       passMark: dto.passMark,
-      timeLimit: dto.timeLimit,
+      timeLimit: dto.timeLimit ?? windowMinutes(opensAt, closesAt),
+      opensAt,
+      closesAt,
       maxAttempts: dto.maxAttempts,
       shuffleQuestions: dto.shuffleQuestions,
       shuffleChoices: dto.shuffleChoices,
@@ -117,6 +123,15 @@ export class QuizService {
     quiz.timeLimit = dto.timeLimit;
   }
 
+  if (dto.opensAt !== undefined || dto.closesAt !== undefined) {
+    const opensAt = dto.opensAt !== undefined ? parseInstant(dto.opensAt, 'opensAt') : quiz.opensAt;
+    const closesAt = dto.closesAt !== undefined ? parseInstant(dto.closesAt, 'closesAt') : quiz.closesAt;
+    if (!opensAt || !closesAt) throw new BadRequestException('Set both opensAt and closesAt');
+    checkWindow(opensAt, closesAt);
+    quiz.opensAt = opensAt;
+    quiz.closesAt = closesAt;
+  }
+
   if (dto.maxAttempts !== undefined) {
     quiz.maxAttempts = dto.maxAttempts;
   }
@@ -139,6 +154,9 @@ export class QuizService {
       if (questionsCount === 0) {
         throw new BadRequestException('Add at least one question before publishing the exam');
       }
+    }
+    if (dto.isPublished && (!quiz.opensAt || !quiz.closesAt)) {
+      throw new BadRequestException('Set the exam opening and closing time before publishing');
     }
     quiz.isPublished = dto.isPublished;
   }
