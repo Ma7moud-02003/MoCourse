@@ -7,7 +7,7 @@ const make = (updateEnrollStatus: jest.Mock) => {
   const lessonService: any = {
     verifyStudentEnrollment: jest.fn().mockResolvedValue(true),
     getLessonSectionId: jest.fn().mockResolvedValue(1),
-    getLessonForDeveopment: jest.fn().mockResolvedValue({ duration: 100, section: { id: 1 } }),
+    getLessonForDeveopment: jest.fn().mockResolvedValue({ type: 'video', duration: 100, section: { id: 1 } }),
   };
   const sectionService: any = { getSection: jest.fn().mockResolvedValue({ course: { id: 7 } }) };
   const svc = new ProgressService(progressRepo, lessonService, sectionService, { updateEnrollStatus } as any);

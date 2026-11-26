@@ -165,7 +165,7 @@ describe('resume position', () => {
     const lesson: any = {
       verifyStudentEnrollment: jest.fn(async () => enrolled),
       getLessonSectionId: jest.fn(async () => 1),
-      getLessonForDeveopment: jest.fn(async () => ({ duration: 600, section: { id: 1 } })),
+      getLessonForDeveopment: jest.fn(async () => ({ type: 'video', duration: 600, section: { id: 1 } })),
     };
     const section: any = { getSection: jest.fn(async () => ({ course: { id: 3 } })) };
     return { prog: new ProgressService(repo, lesson, section, {} as any), query, save, progress };

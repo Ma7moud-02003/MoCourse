@@ -7,6 +7,7 @@ import { LessonService } from 'src/lesson/lesson.service';
 import { SectionService } from 'src/section/section.service';
 import { UpdateProgressDto } from './creatProg.dto.ts/updateProg.dto';
 import { EnrollmentService } from 'src/enrollment/enrollment.service';
+import { LessonType } from 'src/utils/enums/lessonType.enum';
 
 @Injectable()
 export class ProgressService {
@@ -57,12 +58,22 @@ export class ProgressService {
         const progress = await this.getSingleProgress(dto.lessonId, userId);
         const lesson = await this.lessonService.getLessonForDeveopment(dto.lessonId);
         if (!lesson) throw new BadRequestException();
-        if (!lesson.duration) throw new BadRequestException();
-        const persentage = (dto.lastPosition * 100) / lesson.duration;
-        // the latest place the student reached (not the furthest), clamped to the lesson length,
-        // so "continue where you stopped" opens the right spot even after going back
-        progress.lastPosition = Math.min(Math.max(Math.floor(dto.lastPosition), 0), lesson.duration);
-        if (persentage >= 90) {
+        const isVideo = lesson.type === LessonType.VIDEO;
+        let reachedEnd: boolean;
+        if (isVideo) {
+            // video lessons keep the original rule: they need a duration, and 90% watched means completed
+            if (!lesson.duration) throw new BadRequestException();
+            // the latest place the student reached (not the furthest), clamped to the lesson length,
+            // so "continue where you stopped" opens the right spot even after going back
+            progress.lastPosition = Math.min(Math.max(Math.floor(dto.lastPosition), 0), lesson.duration);
+            reachedEnd = (dto.lastPosition * 100) / lesson.duration >= 90;
+        } else {
+            // pdf and text lessons have no duration: the position is just saved (never negative), and the
+            // student finishes the lesson by sending completed: true. A completed lesson stays completed.
+            progress.lastPosition = Math.max(Math.floor(dto.lastPosition), 0);
+            reachedEnd = dto.completed === true;
+        }
+        if (reachedEnd) {
             progress.completed = true;
             progress.completedAt ??= new Date();
             await this.progressRepo.save(progress);

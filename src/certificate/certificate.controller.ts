@@ -29,13 +29,6 @@ return this.cerService.verifyCrttificate(certificateNum);
 }
 
 
-//   @Get('callback')
-//   getCallback(@Query('code') code: string) {
-//     console.log(code);
-//     return 'Facebook callback works';
-//   }
-
-
 //   @Get('login')
 //   login(@Res() res: express.Response) {
 //     const appId = '4556582321253838';

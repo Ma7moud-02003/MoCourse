@@ -24,7 +24,6 @@ return this.quizService.creatNewQuiz(payload.id,body)
 @UseGuards(AuthGuard,Roleguard)
 @Patch('/:id')
 edite(@Param('id',new ParseIntPipe()) quizeId:number,@Payload() payload:paylodType.PayloadType,@Body() body:UpdateQuizDto){
-console.log(quizeId,payload,body);    
 return this.quizService.updateQuiz(quizeId,payload.id,body)
 }
 

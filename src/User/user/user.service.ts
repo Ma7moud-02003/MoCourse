@@ -50,7 +50,6 @@ export class UserService {
   });
    newUser=  await this.userRepo.save(newUser);
   const payload:PayloadType={id:newUser.id,role:newUser.role};
-  console.log(payload);
  const token=await this.generateToken(payload)
   return {
     message: 'Account Registered Successfully',
