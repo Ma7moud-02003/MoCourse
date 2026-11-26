@@ -127,7 +127,6 @@ export class PurchaseService {
         if (purchaseStatus == StatusEnum.PAID || purchaseStatus == StatusEnum.WAITING_APPROVAL) throw new NotFoundException('Purchase Already Paid');
         assertImageFile(file, 'Payment screenshot');
         const image = await this.cloudService.uploadFile(file, 'course/images', 'image');
-        console.log(purchase.user.id);
         if (purchase.user.id != userId) throw new UnauthorizedException('You Can not Access That Purchase')
         // only a request that is still PENDING (or rejected, being retried) can move to WAITING_APPROVAL: a stale or
         // repeated submission can never overwrite a decision the instructor made in the meantime
