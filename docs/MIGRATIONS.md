@@ -42,6 +42,12 @@ Always run them on a copy of the data first, and take a backup before running on
    - Deploy order in production: run `npm run migration:run` BEFORE starting the new code. Without the rule the new
      code refuses to enroll (the purchase approval fails and rolls back, nothing is half-saved).
 
+7. `PurchaseUniqueStudentCourse`: adds UNIQUE("userId", "courseId") on `purchase` (one purchase request per student per
+   course; a rejected request is retried on the same row). Same behavior as 6: refuses and lists every row (id, status,
+   amount, payment method, transaction id) when duplicates exist, never deletes or merges. Rows marked PAID count in
+   the instructor's sales totals, so which duplicate to keep is an accounting decision for the owner. The start guard
+   works the same way. A database that the app syncs itself needs no migration command: just pull and start.
+
 ## Other tables
 
 Only the exam attempt times were converted. `createdAt` / `updatedAt` columns on other tables are still plain
