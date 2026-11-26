@@ -191,7 +191,6 @@ export class LessonService {
         const section = await this.sectionService.getSection(sectioId);
         if (!section) throw new BadRequestException('No section Provided');
         const courseId = section.course.id;
-        console.log(courseId);
 
         const course = await this.courseService.getSingleCourse(courseId);
         if (!course) throw new BadRequestException('Course is not found');
