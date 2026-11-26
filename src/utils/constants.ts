@@ -1,4 +1,3 @@
-import { UserRoles } from "./enums/userRole.enum";
 
 export const  CURRENT_TIMESTAMP='CURRENT_TIMESTAMP(6)';
 

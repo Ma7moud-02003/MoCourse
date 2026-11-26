@@ -1,6 +1,6 @@
 import { CourseEntity } from "src/course/course.entity";
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
-import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
 import { UserEntity } from "src/User/user.entity";
 
 @Entity({name:'reviews'})

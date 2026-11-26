@@ -1,10 +1,9 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QuizEntity } from './quiz.entity';
 import { Repository } from 'typeorm';
 import { CreateQuizDto } from './dtos/creat.dto';
 import { CourseService } from 'src/course/course.service';
-import { CourseEntity } from 'src/course/course.entity';
 import { EnrollmentService } from 'src/enrollment/enrollment.service';
 import { UpdateQuizDto } from './dtos/update.dto';
 import { QuestionEntity } from 'src/question/question.entity';
@@ -36,7 +35,6 @@ export class QuizService {
   ) {
     if (!dto.title || !insId || !dto.courseId) {
       throw new BadRequestException(); }
-    let course: CourseEntity | undefined;
     let quiz: QuizEntity;
     const opensAt = parseInstant(dto.opensAt, 'opensAt');
     const closesAt = parseInstant(dto.closesAt, 'closesAt');
@@ -61,7 +59,8 @@ export class QuizService {
 
     };
   
-        course = await this.courseService.getCourseDetails(dto.courseId);
+        // existence check only: getCourseDetails throws NotFound when the course does not exist
+        await this.courseService.getCourseDetails(dto.courseId);
         const ownsCourse = await this.courseService.verifyingInstractorOwnTheCourse(insId, dto.courseId);
         if (!ownsCourse) throw new ForbiddenException('You do not own this course');
         if (dto.isPublished) {throw new BadRequestException('A new exam starts as a draft. Add questions first, then publish it.');}

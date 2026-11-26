@@ -1,5 +1,5 @@
 import { Type } from "class-transformer/types/decorators/type.decorator";
-import { IsArray, IsBoolean, IsOptional, IsNumber, IsString, Length, Min,Max, IsNotEmpty } from "class-validator";
+import { IsArray, IsBoolean, IsOptional, IsNumber, IsString, Length, Min,Max } from "class-validator";
 import { CourseLevel } from "src/utils/enums/level.enum";
 
 export class UpdateCouurseDto{

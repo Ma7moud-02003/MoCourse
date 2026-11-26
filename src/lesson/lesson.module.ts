@@ -8,7 +8,6 @@ import { SectionModule } from 'src/section/section.module';
 import { CourseModule } from 'src/course/course.module';
 import { CloudinaryModule } from 'src/common/cloudinary/cloudinary.module';
 import { EnrollmentModule } from 'src/enrollment/enrollment.module';
-import { ProgressModule } from 'src/progress/progress.module';
 
 @Module({
   controllers: [LessonController],

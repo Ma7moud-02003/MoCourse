@@ -2,7 +2,6 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { EnrollmentEntity } from './enrollment.entity';
 import { EntityManager, Repository } from 'typeorm';
-import { CourseEntity } from 'src/course/course.entity';
 import { CourseService } from 'src/course/course.service';
 import { EnrollmentStatus } from 'src/utils/enums/enroll.enum';
 import { UserRoles } from 'src/utils/enums/userRole.enum';
