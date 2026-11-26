@@ -33,16 +33,15 @@ const exist=await this.enrollRepo.findOne({where:{
     user:{id:studentId}
 }})
 if(exist) throw new BadRequestException('You are alrealdy enroll this course');
-console.log(courseId);
 
-const course=await this.courseService.getSingleCourse(courseId); // proplem is here 
+const course=await this.courseService.getSingleCourse(courseId);
 if(!course) throw new NotFoundException('Course is not existed')
 if(!course.isPublished) throw new BadRequestException('Course is not Published Yet');
- const enroll=this.enrollRepo.create({
-    course:{id:courseId},
-    user:{id:studentId}
- })
- await this.enrollRepo.save(enroll);
+// One enrollment per student and course is enforced by the database. The insert ignores a conflict, so two
+// requests arriving together create one row; the loser gets the same answer as a repeated request and the
+// existing enrollment (status, progress) is left untouched.
+const created=await this.insertEnrollmentIgnoringDuplicate(this.enrollRepo.manager,courseId,studentId);
+if(!created) throw new BadRequestException('You are alrealdy enroll this course');
           //creating notification for instractor
  await this.notifiService.creatNotification(
                courseId,studentId,
@@ -51,6 +50,20 @@ if(!course.isPublished) throw new BadRequestException('Course is not Published Y
                NotificationType.ENROLLMENT  
                )
                        
+}
+
+/**
+ * INSERT ... ON CONFLICT DO NOTHING on the (user, course) rule. Never updates an existing row.
+ * @returns true when a new row was inserted, false when the student was already enrolled
+ */
+private async insertEnrollmentIgnoringDuplicate(manager:EntityManager,courseId:number,studentId:number):Promise<boolean>{
+const result=await manager.createQueryBuilder()
+    .insert()
+    .into(EnrollmentEntity)
+    .values({course:{id:courseId},user:{id:studentId}})
+    .orIgnore()
+    .execute();
+return result.raw.length>0;
 }
 
 
@@ -68,8 +81,8 @@ if(exist) return false;
 const course=await this.courseService.getSingleCourse(courseId);
 if(!course) throw new NotFoundException('Course is not existed');
 if(!course.isPublished) throw new BadRequestException('Course is not Published Yet');
-await repo.save(repo.create({course:{id:courseId},user:{id:studentId}}));
-return true;
+// the purchase approval runs in a transaction: ON CONFLICT DO NOTHING keeps it alive when another request enrolled the student first
+return await this.insertEnrollmentIgnoringDuplicate(manager,courseId,studentId);
 }
 
 
