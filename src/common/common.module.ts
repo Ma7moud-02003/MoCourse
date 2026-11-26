@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { AuthGuard } from "./Guards/auth.guard";
+import { OptionalAuthGuard } from "./Guards/optional-auth.guard";
 import { Roleguard } from "./Guards/role.guard";
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { JWT_LIFETIME_SECONDS } from "src/utils/constants";
@@ -24,8 +25,8 @@ export function jwtOptions(config: Pick<ConfigService, 'get'>) {
     }),
         CloudinaryModule
     ],
-    providers:[AuthGuard,Roleguard],
-    exports:[AuthGuard,Roleguard,JwtModule]
+    providers:[AuthGuard,Roleguard,OptionalAuthGuard],
+    exports:[AuthGuard,Roleguard,OptionalAuthGuard,JwtModule]
 
 })
 export class CommonModule{

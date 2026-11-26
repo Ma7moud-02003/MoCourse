@@ -189,3 +189,33 @@ describe('ReviewService.getCourseReviews (public)', () => {
     expect(m.repo.find.mock.calls[0][0]).toMatchObject({ take: 50, skip: 100 });
   });
 });
+
+describe('ReviewService.getCourseReviews on a draft course', () => {
+  const draft = (m: ReturnType<typeof makeService>) => {
+    m.courseService.getSingleCourse.mockResolvedValue({ id: 1, isPublished: false, Instractor: { id: 99 } });
+    m.repo.find.mockResolvedValue([]);
+    m.enrollmentService.verifyStudentEnrollment.mockResolvedValue(false);
+  };
+
+  it('lets the owner instructor read', async () => {
+    const m = makeService(); draft(m);
+    await expect(m.service.getCourseReviews(1, 1, 20, { id: 99, role: UserRoles.INSTRACTOR })).resolves.toEqual([]);
+  });
+  it('lets an admin read', async () => {
+    const m = makeService(); draft(m);
+    await expect(m.service.getCourseReviews(1, 1, 20, { id: 1, role: UserRoles.ADMIN })).resolves.toEqual([]);
+  });
+  it('lets an enrolled student read', async () => {
+    const m = makeService(); draft(m);
+    m.enrollmentService.verifyStudentEnrollment.mockResolvedValue(true);
+    await expect(m.service.getCourseReviews(1, 1, 20, { id: 10, role: UserRoles.STUDENT })).resolves.toEqual([]);
+    expect(m.enrollmentService.verifyStudentEnrollment).toHaveBeenCalledWith(10, 1);
+  });
+  it('404s for the public, a stranger student and another instructor', async () => {
+    for (const viewer of [undefined, { id: 10, role: UserRoles.STUDENT }, { id: 55, role: UserRoles.INSTRACTOR }] as any[]) {
+      const m = makeService(); draft(m);
+      await expect(m.service.getCourseReviews(1, 1, 20, viewer)).rejects.toBeInstanceOf(NotFoundException);
+      expect(m.repo.find).not.toHaveBeenCalled();
+    }
+  });
+});

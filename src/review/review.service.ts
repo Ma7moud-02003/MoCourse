@@ -128,10 +128,15 @@ await this.reviewRepo.remove(review);
   * @param limit page size (default 20, max 50)
   * @returns newest-first list of public reviews
   */
- public async getCourseReviews(courseId:number,page:number=1,limit:number=20){
+ public async getCourseReviews(courseId:number,page:number=1,limit:number=20,viewer?:PayloadType){
 if(!courseId) throw new NotFoundException();
 const course=await this.courseService.getSingleCourse(courseId);
-if(!course||course.isPublished===false) throw new NotFoundException('Course not found');
+if(!course) throw new NotFoundException('Course not found');
+if(course.isPublished===false){
+    // draft course: only its instructor, an admin or an enrolled student may read; all others get the same 404
+    const allowed=await this.canReadDraftReviews(course,courseId,viewer);
+    if(!allowed) throw new NotFoundException('Course not found');
+}
 const take=Math.min(Math.max(Math.floor(limit)||20,1),50);
 const skip=(Math.max(Math.floor(page)||1,1)-1)*take;
     const reviews=await this.reviewRepo.find({
@@ -152,6 +157,13 @@ const skip=(Math.max(Math.floor(page)||1,1)-1)*take;
     }));
  }
 
+
+private async canReadDraftReviews(course:any,courseId:number,viewer?:PayloadType){
+if(!viewer?.id) return false;
+if(viewer.role===UserRoles.ADMIN) return true;
+if(course.Instractor?.id===viewer.id) return true;
+return !!(await this.enrollmentService.verifyStudentEnrollment(viewer.id,courseId));
+}
 
 async verify(courseId:number,userId:number){
 const course=await this.courseService.getSingleCourse(courseId);
