@@ -1,6 +1,5 @@
 import { Type } from "class-transformer";
 import { IsArray, IsEnum, IsInt, IsOptional, IsString, Min, ValidateNested } from "class-validator";
-import { CreateChoiceDto } from "src/choice/dtos/creat.dto";
 import { UpdateChoiseDto } from "src/choice/dtos/update.dto";
 import { QuestionType } from "src/utils/enums/questionTyoe.enum";
 
