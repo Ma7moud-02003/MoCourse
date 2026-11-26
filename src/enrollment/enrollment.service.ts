@@ -53,7 +53,7 @@ if(!created) throw new BadRequestException('You are alrealdy enroll this course'
 }
 
 /**
- * INSERT ... ON CONFLICT DO NOTHING on the (user, course) rule. Never updates an existing row.
+ * INSERT ... ON CONFLICT ON CONSTRAINT "UQ_enrollments_user_course" DO NOTHING (only the one-enrollment-per-student-and-course rule). Never updates an existing row.
  * @returns true when a new row was inserted, false when the student was already enrolled
  */
 private async insertEnrollmentIgnoringDuplicate(manager:EntityManager,courseId:number,studentId:number):Promise<boolean>{
@@ -61,7 +61,8 @@ const result=await manager.createQueryBuilder()
     .insert()
     .into(EnrollmentEntity)
     .values({course:{id:courseId},user:{id:studentId}})
-    .orIgnore()
+    // names the one rule this is about: any other constraint violation still raises and rolls the transaction back
+    .onConflict('ON CONSTRAINT "UQ_enrollments_user_course" DO NOTHING')
     .execute();
 return result.raw.length>0;
 }
