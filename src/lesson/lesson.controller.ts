@@ -1,5 +1,5 @@
 import { BoundedTempUploadInterceptor, lessonUploadLimits, tempDiskStorage } from 'src/common/upload/temp-upload';
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { LessonService } from './lesson.service';
 import { CreateLessonDto } from './dtos/lessin.dto';
 import { Payload } from 'src/common/Decorators/payload.decorator';
