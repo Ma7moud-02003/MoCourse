@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { CreatCommentDto } from './dtos/cret-comment.dto';
 import { Payload } from 'src/common/Decorators/payload.decorator';
 import * as paylodType from 'src/utils/types/paylod.type';
@@ -14,6 +14,13 @@ export class ReviewController {
     constructor(
         private reviewCourse:ReviewService
     ){}
+
+    // public: anyone (even logged out) can read a published course's reviews, no private account data
+    @Get('course/:courseId')
+    getCourseReviews(@Param('courseId',new ParseIntPipe()) courseId:number,
+    @Query('page') page?:string,@Query('limit') limit?:string){
+    return this.reviewCourse.getCourseReviews(courseId,Number(page)||1,Number(limit)||20);
+    }
 
     @Post('add/:courseId')
     @Roles(UserRoles.ADMIN,UserRoles.STUDENT)

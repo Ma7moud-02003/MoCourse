@@ -119,20 +119,37 @@ await this.reviewRepo.remove(review);
  }
 
  /**
-  *  getting all reviews for course
-  * @param courseId 
-  * @returns reviews with thier owns 
+  * public list of a course's reviews (anyone, logged in or not).
+  * Only published courses are listed; a draft or missing course answers 404 so nothing leaks.
+  * Only the review text/rating/dates and the reviewer's display name + avatar are returned:
+  * never the reviewer's id, email, role or any other account field.
+  * @param courseId
+  * @param page 1-based page number
+  * @param limit page size (default 20, max 50)
+  * @returns newest-first list of public reviews
   */
- public async getCourseReviews(courseId:number){
+ public async getCourseReviews(courseId:number,page:number=1,limit:number=20){
 if(!courseId) throw new NotFoundException();
+const course=await this.courseService.getSingleCourse(courseId);
+if(!course||course.isPublished===false) throw new NotFoundException('Course not found');
+const take=Math.min(Math.max(Math.floor(limit)||20,1),50);
+const skip=(Math.max(Math.floor(page)||1,1)-1)*take;
     const reviews=await this.reviewRepo.find({
         where:{
             course:{id:courseId}
         },relations:{user:true},select:{
-            user:{id:true,avatar:true,fullName:true}
-        },order:{createdAt:'DESC'}
+            id:true,comment:true,rateing:true,createdAt:true,updatedAt:true,
+            user:{avatar:true,fullName:true}
+        },order:{createdAt:'DESC',id:'DESC'},take,skip
     });
-    return  reviews;
+    return reviews.map((r)=>({
+        id:r.id,
+        comment:r.comment,
+        rateing:r.rateing,
+        createdAt:r.createdAt,
+        updatedAt:r.updatedAt,
+        user:{fullName:r.user?.fullName,avatar:r.user?.avatar},
+    }));
  }
 
 

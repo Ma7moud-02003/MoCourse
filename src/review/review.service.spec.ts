@@ -158,3 +158,34 @@ describe('ReviewService.deleteReview', () => {
     });
   });
 });
+
+describe('ReviewService.getCourseReviews (public)', () => {
+  const row = (id: number) => ({
+    id, comment: 'c' + id, rateing: 5, createdAt: new Date(), updatedAt: new Date(),
+    user: { id: 77, email: 'secret@x.com', password: 'h', fullName: 'Sara', avatar: 'a.png' },
+  });
+
+  it('returns only public fields and never the reviewer id/email', async () => {
+    const m = makeService();
+    m.courseService.getSingleCourse.mockResolvedValue({ id: 1, isPublished: true });
+    m.repo.find.mockResolvedValue([row(1)]);
+    const res: any = await m.service.getCourseReviews(1);
+    expect(res[0].user).toEqual({ fullName: 'Sara', avatar: 'a.png' });
+    expect(JSON.stringify(res)).not.toMatch(/secret@x\.com|"password"|77/);
+  });
+
+  it('404s for a draft course', async () => {
+    const m = makeService();
+    m.courseService.getSingleCourse.mockResolvedValue({ id: 1, isPublished: false });
+    await expect(m.service.getCourseReviews(1)).rejects.toBeInstanceOf(NotFoundException);
+    expect(m.repo.find).not.toHaveBeenCalled();
+  });
+
+  it('caps page size at 50 and pages correctly', async () => {
+    const m = makeService();
+    m.courseService.getSingleCourse.mockResolvedValue({ id: 1, isPublished: true });
+    m.repo.find.mockResolvedValue([]);
+    await m.service.getCourseReviews(1, 3, 9999);
+    expect(m.repo.find.mock.calls[0][0]).toMatchObject({ take: 50, skip: 100 });
+  });
+});
