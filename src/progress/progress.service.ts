@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ProgressEntity } from './progress.entity';
 import { Repository } from 'typeorm';
@@ -10,6 +10,7 @@ import { EnrollmentService } from 'src/enrollment/enrollment.service';
 
 @Injectable()
 export class ProgressService {
+    private readonly logger = new Logger(ProgressService.name);
     constructor(
         @InjectRepository(ProgressEntity)
         private progressRepo: Repository<ProgressEntity>,
@@ -73,8 +74,14 @@ export class ProgressService {
             const courseProgress = await this.getCourseProgress(courseId, userId);
             const persentage = courseProgress.persentage;
             if (persentage >= 90) {
-                this.enrollService.updateEnrollStatus(courseId, userId);
-                
+                // The lesson progress is already saved above, so a problem while completing the course must not turn
+                // this request into an error. It is awaited (no unhandled rejection that can stop the server) and
+                // logged.
+                try {
+                    await this.enrollService.updateEnrollStatus(courseId, userId);
+                } catch (e) {
+                    this.logger.error(`Completing course ${courseId} for student ${userId} failed: ${(e as Error)?.message}`, (e as Error)?.stack);
+                }
             };
             return progress;
         }
