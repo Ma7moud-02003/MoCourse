@@ -1,14 +1,19 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PaymentInfoEntity } from '../paymentInfo.entity';
 import { Repository } from 'typeorm';
 import { PaymentInfoDto } from './dtos/paymentInfo.dto';
+import { CourseEntity } from 'src/course/course.entity';
+import { PayloadType } from 'src/utils/types/paylod.type';
+import { UserRoles } from 'src/utils/enums/userRole.enum';
 
 @Injectable()
 export class PaymentinfoService {
     constructor(
         @InjectRepository(PaymentInfoEntity)
-                private paymentInfoRepo:Repository<PaymentInfoEntity>
+                private paymentInfoRepo:Repository<PaymentInfoEntity>,
+        @InjectRepository(CourseEntity)
+                private courseRepo:Repository<CourseEntity>
             ){}
 
         async addPaymentInfo(dto:PaymentInfoDto,instractorId:number){
@@ -63,6 +68,33 @@ export class PaymentinfoService {
             return payment;
           }
 
+        // the owner (the instructor) or an admin; everyone else is refused
+        async getInsPatmentInfoForViewer(instractorId:number,viewer:PayloadType){
+            if(viewer.role!==UserRoles.ADMIN && viewer.id!==instractorId){
+              throw new ForbiddenException('You are not allowed to see this payment information');
+            }
+            return this.getInsPatmentInfo(instractorId);
+          }
+
+        // For a student who is about to pay. Works only for a published course and returns only the payment
+        // details of that course's instructor (no ids, nothing else about the instructor).
+        async getPaymentInfoForCourse(courseId:number){
+            const course=await this.courseRepo.findOne({
+              where:{id:courseId,isPublished:true},
+              relations:{Instractor:true},
+              select:{id:true,Instractor:{id:true}}
+            });
+            if(!course) throw new NotFoundException('Course not found');
+            const payment=await this.findInsPaymentInfo(course.Instractor.id);
+            if(!payment) throw new NotFoundException('The instructor has not added payment information yet');
+            return {
+              instapay:payment.instapay,
+              vodafonCach:payment.vodafonCach,
+              orangeCash:payment.orangeCash,
+              bankAccount:payment.bankAccount,
+              ownerName:payment.ownerName,
+            };
+          }
 
            async  getAllPaymentInfo(){
             const payments=await this.paymentInfoRepo.find()
