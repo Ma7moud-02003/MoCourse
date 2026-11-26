@@ -12,6 +12,7 @@ import { UserRoles } from 'src/utils/enums/userRole.enum';
 import { UpdateCouurseDto } from './dtos/updateCourse.dto';
 import { CourseLevel } from 'src/utils/enums/level.enum';
 import { EnrollmentService } from 'src/enrollment/enrollment.service';
+import { pageResult, parsePaging } from 'src/utils/pagination';
 
 
 
@@ -183,7 +184,8 @@ export class CourseService {
      * @returns all courses
      */
     public async getAllCourses(title: string, categoryId?: number,
-        minPrice?: number, maxPrice?: number, level?: CourseLevel, role?: UserRoles) {
+        minPrice?: number, maxPrice?: number, level?: CourseLevel, role?: UserRoles, page?: unknown, limit?: unknown) {
+        const paging = parsePaging(page, limit);
         const query = {
             // drafts are hidden from the public list; admin sees everything
             ...(role === UserRoles.ADMIN ? {} : { isPublished: true }),
@@ -192,8 +194,12 @@ export class CourseService {
             ...(categoryId ? { category: { id: categoryId } } : {}),
             ...(level ? { level: level } : {})
         }
-        return await this.courseRepo.find({
+        // newest first, id breaks ties, so pages never repeat or skip a course
+        const [items, total] = await this.courseRepo.findAndCount({
             where: query,
+            order: { createdAt: 'DESC', id: 'DESC' },
+            skip: paging.skip,
+            take: paging.limit,
             relations: {
                 category: true, Instractor: true
             },
@@ -204,8 +210,8 @@ export class CourseService {
                 category: { name: true },
                 Instractor: { id: true, fullName: true, avatar: true }
             }
-        }
-        );
+        });
+        return pageResult(items, total, paging.page, paging.limit);
     }
 
 
