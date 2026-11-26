@@ -11,6 +11,7 @@ function build(published: boolean) {
   const courseRepo: any = {
     findOne: jest.fn(async () => course),
     find: jest.fn(async () => []),
+    findAndCount: jest.fn(async () => [[], 0]),
     save: jest.fn(async (c: any) => c),
   };
   const enroll: any = { verifyStudentEnrollment: jest.fn(async (u: number) => u === ENROLLED) };
@@ -61,9 +62,9 @@ describe('draft visibility', () => {
   it('public list filters to published, admin sees all', async () => {
     const { service, courseRepo } = build(true);
     await service.getAllCourses('' as any, undefined, undefined, undefined, undefined, UserRoles.STUDENT);
-    expect(courseRepo.find.mock.calls[0][0].where.isPublished).toBe(true);
+    expect(courseRepo.findAndCount.mock.calls[0][0].where.isPublished).toBe(true);
     await service.getAllCourses('' as any, undefined, undefined, undefined, undefined, UserRoles.ADMIN);
-    expect('isPublished' in courseRepo.find.mock.calls[1][0].where).toBe(false);
+    expect('isPublished' in courseRepo.findAndCount.mock.calls[1][0].where).toBe(false);
   });
   it('suggested courses are published only', async () => {
     const { service, courseRepo } = build(true);
