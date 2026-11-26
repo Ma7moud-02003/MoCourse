@@ -37,9 +37,11 @@ export class CourseController {
     @Query('categoryId') categoryId: string,
     @Query('minPrice') minPrice: string,
     @Query('maxPrice') maxPrice: string,
+    @Query('page') page: string,
+    @Query('limit') limit: string,
     @Payload() payload: paylodType.PayloadType,
   ) {
-    return this.courseServise.getAllCourses(title, parseInt(categoryId), parseInt(minPrice), parseInt(maxPrice), level, payload.role);
+    return this.courseServise.getAllCourses(title, parseInt(categoryId), parseInt(minPrice), parseInt(maxPrice), level, payload.role, page, limit);
   }
 
   @Get('ins/myCourses')
