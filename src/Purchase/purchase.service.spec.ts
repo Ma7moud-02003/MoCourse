@@ -192,9 +192,9 @@ describe('confirmCheckOut: proof submit and instructor notification', () => {
       findOne: jest.fn(async () => row),
       createQueryBuilder: () => { const b: any = {}; b.update = () => b; b.set = () => b; b.where = () => b; b.execute = async () => ({ affected }); return b; },
     };
-    const cloud: any = { uploadFile: jest.fn(async () => ({ secure_url: 'u', public_id: 'p' })) };
+    const cloud: any = { uploadFile: jest.fn(async () => ({ secure_url: 'u', public_id: 'p' })), destroyAsset: jest.fn(async () => true) };
     const notif: any = { creatNotification: jest.fn(notifyFails ? async () => { throw new Error('boom'); } : async () => undefined) };
-    return { svc: new PurchaseService(repo, {} as any, {} as any, cloud, notif), repo, notif };
+    return { svc: new PurchaseService(repo, {} as any, {} as any, cloud, notif), repo, notif, cloud };
   }
   it('loads the course and its instructor, and notifies that instructor once', async () => {
     const { svc, repo, notif } = make(1);
@@ -207,6 +207,28 @@ describe('confirmCheckOut: proof submit and instructor notification', () => {
     const { svc, notif } = make(0);
     await expect(svc.confirmCheckOut(5, dto, 3, png)).rejects.toBeInstanceOf(BadRequestException);
     expect(notif.creatNotification).not.toHaveBeenCalled();
+  });
+  it('the loser of a race deletes only its own just-uploaded file', async () => {
+    const { svc, cloud } = make(0);
+    await expect(svc.confirmCheckOut(5, dto, 3, png)).rejects.toBeInstanceOf(BadRequestException);
+    expect(cloud.destroyAsset).toHaveBeenCalledTimes(1);
+    expect(cloud.destroyAsset).toHaveBeenCalledWith('p');
+  });
+  it('the winner keeps its upload (nothing is destroyed)', async () => {
+    const { svc, cloud } = make(1);
+    await svc.confirmCheckOut(5, dto, 3, png);
+    expect(cloud.destroyAsset).not.toHaveBeenCalled();
+  });
+  it('a failing cleanup never changes the answer', async () => {
+    const { svc, cloud } = make(0);
+    cloud.destroyAsset.mockResolvedValue(false);
+    await expect(svc.confirmCheckOut(5, dto, 3, png)).rejects.toBeInstanceOf(BadRequestException);
+  });
+  it('a database error while saving also removes the unreferenced upload and rethrows', async () => {
+    const { svc, repo, cloud } = make(1);
+    repo.createQueryBuilder = () => { const b: any = {}; b.update = () => b; b.set = () => b; b.where = () => b; b.execute = async () => { throw new Error('db'); }; return b; };
+    await expect(svc.confirmCheckOut(5, dto, 3, png)).rejects.toThrow('db');
+    expect(cloud.destroyAsset).toHaveBeenCalledWith('p');
   });
   it('a notification failure does not turn a saved submission into an error', async () => {
     const { svc } = make(1, true);
