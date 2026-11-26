@@ -107,10 +107,18 @@ return certificate;
  */
 public async verifyCrttificate(certificateNumber:string){
 const certificate=await this.certificateRepo.findOne({
-    where:{certificateNumber:certificateNumber},relations:{student:true,course:true},select:{student:{id:true,fullName:true,email:true},
-    course:{id:true,title:true,duration:true,Instractor:{id:true,fullName:true}}}
+    where:{certificateNumber:certificateNumber},relations:{student:true,course:{Instractor:true}}
 });
 if(!certificate) return {message:'لا يوجد شهاده مخصصه لهذا الكود'};
-return certificate;
+// Any logged-in user can look a certificate up by its code, so only what is needed to check it is returned:
+// number, dates, course and the student's display name. Never the student's email or any account id.
+return {
+    certificateNumber:certificate.certificateNumber,
+    issuedAt:certificate.issuedAt,
+    completedAt:certificate.completedAt,
+    courseTitle:certificate.courseTitle,
+    student:{fullName:certificate.student?.fullName},
+    course:{title:certificate.course?.title,duration:certificate.course?.duration,Instractor:{fullName:certificate.course?.Instractor?.fullName}}
+};
 }
 }
