@@ -19,8 +19,10 @@ export class EnrollmentEntity{
     default: EnrollmentStatus.IN_PROGRESS})
    status!: EnrollmentStatus;
 
-   @Column({ nullable: true ,type:'timestamp',default:()=>CURRENT_TIMESTAMP})
-  completedAt!: Date;
+   // Empty (null) until the student really completes the course (updateEnrollStatus sets it together with
+   // status=COMPLETED). It has no database default on purpose: a default would stamp the enrollment time.
+   @Column({ nullable: true ,type:'timestamp'})
+  completedAt!: Date | null;
 
       @ManyToOne(()=>UserEntity,(user)=>user.enrolls)
       user!:UserEntity
