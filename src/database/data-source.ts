@@ -17,6 +17,8 @@ export default new DataSource({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
   synchronize: false,
+  // Neon requires SSL; DB_SSL=true enables it in production
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
   // migrations are plain SQL, they do not import the entities
   entities: [],
   migrations: [path.join(__dirname, 'migrations', '*.js')],

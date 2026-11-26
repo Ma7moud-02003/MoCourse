@@ -57,6 +57,8 @@ import { NotificationEntity } from './notifications/notification.entity';
           type: 'postgres',
           host: config.get<string>('DB_HOST') || 'localhost',
           synchronize: process.env.NODE_ENV !=='production',
+          // Neon requires SSL; DB_SSL=true enables it in production
+          ssl: config.get<string>('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
           entities: [UserEntity,CourseEntity,CategoryEntity,SectionEntity,LessonsEntity,
             EnrollmentEntity,ProgressEntity,PurchaseEntity,PaymentInfoEntity,CertificateEntity,
              // quize enties
