@@ -27,7 +27,7 @@ export class CertificateService {
      * @param completedAt 
      */
 public async creatCertification(studentId:number,courseId:number,
-                              courseTitle:string,completedAt:Date){
+                              courseTitle:string,completedAt:Date|null){
 const existedCertificate=await this.certificateRepo.findOne({
     where:{student:{id:studentId},course:{id:courseId}}
 });
