@@ -104,8 +104,30 @@ const courses=await this.enrollRepo.find({
         }
     }
 });
-if(courses.length==0) return new NotFoundException('No Courses Provided For You');
-return courses;
+if(courses.length==0) return [];
+const progress=await this.getCoursesProgress(studentId,courses.map(e=>e.course?.id).filter(id=>id!=null));
+return courses.map(e=>({...e,progressPercent:progress.get(e.course?.id)??0}));
+ }
+
+ /**
+  * Percent of lessons the student completed, per course (0-100, whole number).
+  * A course with no lessons is 0.
+  */
+ public async getCoursesProgress(studentId:number,courseIds:number[]){
+const result=new Map<number,number>();
+if(!courseIds.length) return result;
+const rows:{courseId:number|string,total:number|string,done:number|string}[]=await this.enrollRepo.manager.query(
+`SELECT s."courseId" AS "courseId", COUNT(l.id) AS total, COUNT(p.id) FILTER (WHERE p.completed = true) AS done
+ FROM sections s
+ JOIN lessons l ON l."sectionId" = s.id
+ LEFT JOIN progreses p ON p."lessonId" = l.id AND p."userId" = $1
+ WHERE s."courseId" = ANY($2)
+ GROUP BY s."courseId"`,[studentId,courseIds]);
+for(const r of rows){
+const total=Number(r.total),done=Number(r.done);
+result.set(Number(r.courseId),total>0?Math.round((done*100)/total):0);
+}
+return result;
  }
 
  public async verifyStudentEnrollment(studentId:number,courseId:number){
