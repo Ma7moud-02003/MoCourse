@@ -1,6 +1,6 @@
 import { CourseEntity } from "src/course/course.entity";
 import { UserEntity } from "src/User/user.entity";
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, Unique } from "typeorm";
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, Unique, Index } from "typeorm";
 
 @Entity({name:'certificates'})
 // One certificate per student per course. Enforced by the database so two
@@ -25,6 +25,7 @@ export  class CertificateEntity{
   @ManyToOne(()=>UserEntity,(user)=>user.certificates)
   student!:UserEntity
 
+   @Index('IDX_certificates_course')
    @ManyToOne(()=>CourseEntity,(course)=>course.certificates)
   course!:CourseEntity
 
