@@ -1,11 +1,11 @@
-import { IsNotEmpty, IsNumber, IsPositive } from "class-validator";
+import { IsNotEmpty, IsNumber, IsPositive, Min } from "class-validator";
 export class UpdateProgressDto{
 @IsNotEmpty()
 @IsNumber()
 @IsPositive()
 lessonId!:number;
-@IsNotEmpty()
+// seconds from the start of the lesson; 0 is allowed (student went back to the beginning)
 @IsNumber()
-@IsPositive()
+@Min(0)
 lastPosition!:number;
 }
