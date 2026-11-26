@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { CreatCommentDto } from './dtos/cret-comment.dto';
 import { Payload } from 'src/common/Decorators/payload.decorator';
 import * as paylodType from 'src/utils/types/paylod.type';
@@ -6,6 +6,7 @@ import { Roles } from 'src/common/Decorators/role.decorator';
 import { UserRoles } from 'src/utils/enums/userRole.enum';
 import { ReviewService } from './review.service';
 import { AuthGuard } from 'src/common/Guards/auth.guard';
+import { OptionalAuthGuard } from 'src/common/Guards/optional-auth.guard';
 import { Roleguard } from 'src/common/Guards/role.guard';
 import { UpdateCommentDto } from './dtos/updateRevier.dto';
 
@@ -15,11 +16,13 @@ export class ReviewController {
         private reviewCourse:ReviewService
     ){}
 
-    // public: anyone (even logged out) can read a published course's reviews, no private account data
+    // public for published courses (no login needed, no private account data).
+    // A draft course's reviews are readable only by its own instructor, an admin or an enrolled student; everyone else gets 404.
     @Get('course/:courseId')
+    @UseGuards(OptionalAuthGuard)
     getCourseReviews(@Param('courseId',new ParseIntPipe()) courseId:number,
-    @Query('page') page?:string,@Query('limit') limit?:string){
-    return this.reviewCourse.getCourseReviews(courseId,Number(page)||1,Number(limit)||20);
+    @Query('page') page?:string,@Query('limit') limit?:string,@Req() req?:any){
+    return this.reviewCourse.getCourseReviews(courseId,Number(page)||1,Number(limit)||20,req?.user);
     }
 
     @Post('add/:courseId')
