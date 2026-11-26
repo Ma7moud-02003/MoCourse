@@ -39,7 +39,7 @@ export async function checkEnrollmentSchemaSafety(query: QueryFn): Promise<void>
     .join('; ');
   throw new Error(
     `Refusing to start: enrollments has ${dups.length} duplicate (userId, courseId) group(s) blocking the one-enrollment-per-course rule: ${list}. ` +
-      `Nothing was changed. Review each group and keep one enrollment per student and course, then run "npm run migration:run" before starting the app again.`,
+      `Nothing was changed. Review each group and keep one enrollment per student and course, then start the app again. If this database is managed with migrations, run "npm run migration:run" first; a database that the app syncs itself needs no migration command.`,
   );
 }
 
