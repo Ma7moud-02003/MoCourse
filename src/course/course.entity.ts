@@ -7,7 +7,7 @@ import { SectionEntity } from "src/section/section.entity";
 import { UserEntity } from "src/User/user.entity";
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
 import { CourseLevel } from "src/utils/enums/level.enum";
-import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn, Index } from "typeorm";
 
 @Entity({name:'courses'})
 export class CourseEntity{
@@ -54,9 +54,11 @@ export class CourseEntity{
     @UpdateDateColumn({type:'timestamp',default:()=>CURRENT_TIMESTAMP,onUpdate:CURRENT_TIMESTAMP})
     updatedAt!:Date
     
+    @Index('IDX_courses_instractor')
     @ManyToOne(()=>UserEntity,(user)=>user.courses)
     Instractor!:UserEntity
      
+    @Index('IDX_courses_category')
     @ManyToOne(()=>CategoryEntity,(catog)=>catog.courses)
     category!:CategoryEntity
 
