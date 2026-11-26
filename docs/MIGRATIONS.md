@@ -48,6 +48,18 @@ Always run them on a copy of the data first, and take a backup before running on
    the instructor's sales totals, so which duplicate to keep is an accounting decision for the owner. The start guard
    works the same way. A database that the app syncs itself needs no migration command: just pull and start.
 
+8. `EnrollmentCompletedAtNoDefault`: `enrollments."completedAt"` stays empty (NULL) until the student really completes
+   the course; only `updateEnrollStatus` sets it (together with status COMPLETED and the certificate). The old column
+   had DEFAULT now(), which stamped the enrollment time on every new enrollment. The migration only drops that
+   default. It never reads, changes or deletes an existing row.
+   - Old rows keep their dates. Run `npm run report:enrollment-completed-at` (read-only, SELECT only) to list the rows
+     that need review: in-progress rows that still have a date, completed rows without a date, completed rows whose
+     date equals the enrollment time. It never suggests a replacement date; the owner decides what to do with each.
+   - A database that the app syncs itself needs no migration command: on start the sync drops the default. With
+     NODE_ENV=production (sync off) run `npm run migration:run`; until then new enrollments keep getting the old
+     default, nothing breaks.
+   - Anything that shows or filters on `completedAt` must now treat NULL as "not completed yet".
+
 ## Other tables
 
 Only the exam attempt times were converted. `createdAt` / `updatedAt` columns on other tables are still plain
