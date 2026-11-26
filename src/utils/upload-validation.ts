@@ -13,6 +13,7 @@ export function assertPdfFile(file: Express.Multer.File) {
 
 // Approved by the user (Nov 25): cover image 5 MB, payment proof image 10 MB. MB here means 1024*1024 bytes.
 export const MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024;
+export const MAX_AVATAR_BYTES = 2 * 1024 * 1024; // profile photo, 2 MB
 export const MAX_PAYMENT_PROOF_BYTES = 10 * 1024 * 1024;
 
 /** Required, and the declared type must be image/* (same as the frontend's accept="image/*"). */
