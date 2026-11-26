@@ -207,8 +207,13 @@ const enroll=await this.enrollRepo.findOne({
 if(!enroll) return {
     message:'Enroll Is not Found'
 };
-  if (enroll.status === EnrollmentStatus.COMPLETED)
+  if (enroll.status === EnrollmentStatus.COMPLETED){
+ // Already completed: make sure the certificate exists. This repairs a completion whose certificate step failed
+ // (or an old completed enrollment without one). creatCertification does nothing when the certificate is already there.
+ // The recorded completedAt is passed on as it is (it can be empty on old rows; no date is made up).
+ await this.certificateService.creatCertification(userId,courseId,enroll.course.title,enroll.completedAt);
  return ;
+ }
 enroll.status=EnrollmentStatus.COMPLETED;
 const completedAt=new Date();
 enroll.completedAt=completedAt;
