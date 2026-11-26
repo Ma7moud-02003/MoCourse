@@ -131,11 +131,23 @@ export class PurchaseService {
         if (purchase.user.id != userId) throw new UnauthorizedException('You Can not Access That Purchase')
         // only a request that is still PENDING (or rejected, being retried) can move to WAITING_APPROVAL: a stale or
         // repeated submission can never overwrite a decision the instructor made in the meantime
-        const submitted = await this.purchaseRepo.createQueryBuilder().update(PurchaseEntity)
-            .set({ status: StatusEnum.WAITING_APPROVAL, transactionId: transaction, paymentMethod: paymentMethode, thumbnail: image.secure_url, publicId: image.public_id })
-            .where('id = :id AND status IN (:...open)', { id: purchase.id, open: [StatusEnum.PENDING, StatusEnum.FAILED] })
-            .execute();
-        if (!submitted.affected) throw new BadRequestException('This purchase was already submitted');
+        let submitted;
+        try {
+            submitted = await this.purchaseRepo.createQueryBuilder().update(PurchaseEntity)
+                .set({ status: StatusEnum.WAITING_APPROVAL, transactionId: transaction, paymentMethod: paymentMethode, thumbnail: image.secure_url, publicId: image.public_id })
+                .where('id = :id AND status IN (:...open)', { id: purchase.id, open: [StatusEnum.PENDING, StatusEnum.FAILED] })
+                .execute();
+        } catch (e) {
+            // nothing was saved, so the file just uploaded is not referenced by any row
+            await this.cloudService.destroyAsset(image.public_id);
+            throw e;
+        }
+        if (!submitted.affected) {
+            // this request lost the race: delete ONLY the file it just uploaded (its own public_id).
+            // The winner's proof and any earlier proof are different public_ids and are never touched.
+            await this.cloudService.destroyAsset(image.public_id);
+            throw new BadRequestException('This purchase was already submitted');
+        }
         //creating notification for instractor
          const purchaseId=purchase.id; const courseTitle=purchase.course.title; const user_id=purchase.course.Instractor.id
         // the proof is already saved: a notification problem must not turn a saved submission into an error
