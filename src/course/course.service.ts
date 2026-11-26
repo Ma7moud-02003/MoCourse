@@ -12,6 +12,8 @@ import { UserRoles } from 'src/utils/enums/userRole.enum';
 import { UpdateCouurseDto } from './dtos/updateCourse.dto';
 import { CourseLevel } from 'src/utils/enums/level.enum';
 import { EnrollmentService } from 'src/enrollment/enrollment.service';
+import { EnrollmentEntity } from 'src/enrollment/enrollment.entity';
+import { PurchaseEntity } from 'src/Purchase/purchase.entity';
 import { pageResult, parsePaging } from 'src/utils/pagination';
 
 
@@ -160,6 +162,14 @@ export class CourseService {
             // same course row before the exam row, so a start cannot slip in between the check and the delete.
             const lockedCourse = await manager.findOne(CourseEntity, { where: { id: courseId }, select: { id: true }, lock: { mode: 'pessimistic_write' } });
             if (!lockedCourse) throw new NotFoundException('Course not found');
+            // Students already enrolled (or with a purchase in progress) must not lose their course:
+            // hide it instead of deleting. Students who are enrolled keep their access to a hidden course.
+            const enrolled = await manager.count(EnrollmentEntity, { where: { course: { id: courseId } } });
+            const purchases = await manager.count(PurchaseEntity, { where: { course: { id: courseId } } });
+            if (enrolled > 0 || purchases > 0) {
+                await manager.update(CourseEntity, { id: courseId }, { isPublished: false });
+                return { deleted: false, hidden: true, message: 'This course has students, so it was hidden instead of deleted' };
+            }
             const exams = await manager.find(QuizEntity, { where: { course: { id: courseId } }, select: { id: true }, order: { id: 'ASC' } });
             if (exams.length) {
                 await manager.find(QuizEntity, { where: { id: In(exams.map((e) => e.id)) }, select: { id: true }, order: { id: 'ASC' }, lock: { mode: 'pessimistic_write' } });
@@ -169,7 +179,8 @@ export class CourseService {
             // Other records (enrollments, payments, ...) still point at the course. The database refuses the
             // delete for those; answer with a clear 409 instead of a raw 500. This does not delete anything extra.
             try {
-                return await manager.remove(course);
+                await manager.remove(course);
+                return { deleted: true, hidden: false, message: 'Course deleted' };
             } catch (e: any) {
                 if ((e?.code ?? e?.driverError?.code) === '23503') {
                     throw new ConflictException('This course still has enrolled students or other linked records, so it cannot be deleted');
