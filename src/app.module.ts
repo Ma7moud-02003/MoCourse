@@ -23,9 +23,7 @@ import { PurchaseEntity } from './Purchase/purchase.entity';
 import { PaymentinfoModule } from './instructor-payment-info/paymentinfo/paymentinfo.module';
 import { PaymentInfoEntity } from './instructor-payment-info/paymentInfo.entity';
 import { QuestionModule } from './question/question.module';
-import { ChoiceModule } from './choice/choice.module';
 import { QuizAttemptModule } from './quiz-attempt/quiz-attempt.module';
-import { StudentAnswerModule } from './student-answer/student-answer.module';
 import { QuestionEntity } from './question/question.entity';
 import { QuizAttemptEntity } from './quiz-attempt/quiz-attemp.entity';
 import { StudentAnswerEntity } from './student-answer/student_answer.entity';
@@ -57,7 +55,7 @@ import { NotificationEntity } from './notifications/notification.entity';
           database: config.get<string>('DB_DATABASE'),
           port: config.get<number>('DB_PORT'),
           type: 'postgres',
-          host: 'localhost',
+          host: config.get<string>('DB_HOST') || 'localhost',
           synchronize: process.env.NODE_ENV !=='production',
           entities: [UserEntity,CourseEntity,CategoryEntity,SectionEntity,LessonsEntity,
             EnrollmentEntity,ProgressEntity,PurchaseEntity,PaymentInfoEntity,CertificateEntity,
@@ -73,9 +71,8 @@ import { NotificationEntity } from './notifications/notification.entity';
      PaymentinfoModule,DashboaredModule,
       QuizModule,
        QuestionModule, 
-     ChoiceModule,
       QuizAttemptModule, 
-      StudentAnswerModule, ReviewModule, DashboaredModule, CertificateModule, NotificationsModule,
+      ReviewModule, CertificateModule, NotificationsModule,
      
     ],
   controllers: [AppController],
