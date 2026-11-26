@@ -1,6 +1,6 @@
 import { MAX_THUMBNAIL_BYTES } from 'src/utils/upload-validation';
 // multer rejects a file that reaches the limit, so the limit is cap + 1 byte to allow exactly the cap.
-import { Body, Controller, Delete, Get, HttpStatus, Param, ParseIntPipe, Patch, Post, Query, Req, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { CouurseDto } from './dtos/course.dto';
 import { Payload } from 'src/common/Decorators/payload.decorator';
 import * as paylodType from 'src/utils/types/paylod.type';
@@ -10,7 +10,6 @@ import { Roles } from 'src/common/Decorators/role.decorator';
 import { UserRoles } from 'src/utils/enums/userRole.enum';
 import { AuthGuard } from 'src/common/Guards/auth.guard';
 import { Roleguard } from 'src/common/Guards/role.guard';
-import { UpdateCouurseDto } from './dtos/updateCourse.dto';
 import { CourseLevel } from 'src/utils/enums/level.enum';
 
 
