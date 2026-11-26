@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn, Index } from "typeorm";
 import { QuestionType } from "../utils/enums/questionTyoe.enum";
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
 import { QuizEntity } from "../quiz/quiz.entity";
@@ -38,6 +38,7 @@ export class QuestionEntity {
     ({type:"timestamp",default:()=>CURRENT_TIMESTAMP,onUpdate:CURRENT_TIMESTAMP})
     updatedAt!: Date;
 
+    @Index('IDX_question_quiz')
     @ManyToOne(() => QuizEntity,quiz => quiz.questions,{onDelete: 'CASCADE'})
     quiz!: QuizEntity;
 
