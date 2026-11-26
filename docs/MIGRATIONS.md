@@ -32,6 +32,12 @@ Always run them on a copy of the data first, and take a backup before running on
 3. `EnsureAttemptUniqueRules`: adds the one-attempt-per-student and one-answer-per-question unique rules if the
    database does not have them. Stops with a message if existing duplicate rows break a rule. It never deletes data.
 
+6. `EnrollmentUniqueStudentCourse`: adds UNIQUE("userId", "courseId") on `enrollments` (one enrollment per student per
+   course). If duplicate rows already exist it stops, prints every row involved (id, status, enrolledAt, completedAt)
+   and changes nothing. The owner reviews them, keeps one row per student and course, then runs it again. It never
+   deletes or merges enrollments on its own. Note: in a non-production run the app also syncs the schema on start, so a
+   database that still has duplicates fails to start until they are cleaned up.
+
 ## Other tables
 
 Only the exam attempt times were converted. `createdAt` / `updatedAt` columns on other tables are still plain
