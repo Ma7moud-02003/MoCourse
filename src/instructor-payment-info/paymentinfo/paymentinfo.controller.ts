@@ -27,10 +27,19 @@ updatepaymentInfo(@Body() body:PaymentInfoDto,@Payload() payload:paylodType.Payl
 return this.paymentService.updatedPaymentInfo(body,payload.id);
 }
 
+// Full payment info of one instructor: only that instructor and an admin may read it.
 @Get('info/:id')
 @UseGuards(AuthGuard)
-getPaymentInfo(@Param('id',new ParseIntPipe) id:number){
-return this.paymentService.getInsPatmentInfo(id);
+getPaymentInfo(@Param('id',new ParseIntPipe) id:number,@Payload() payload:paylodType.PayloadType){
+return this.paymentService.getInsPatmentInfoForViewer(id,payload);
+}
+
+// A student about to pay: only the payment details of the instructor who owns this published course.
+@Get('course/:courseId')
+@Roles(UserRoles.STUDENT)
+@UseGuards(AuthGuard,Roleguard)
+getPaymentInfoForCourse(@Param('courseId',new ParseIntPipe) courseId:number){
+return this.paymentService.getPaymentInfoForCourse(courseId);
 }
 
 @Get('my')

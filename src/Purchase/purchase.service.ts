@@ -264,7 +264,7 @@ export class PurchaseService {
     public async getLastPendingPurchase(insId: number) {
         const last = await this.purchaseRepo.find({
             where: { course: { Instractor: { id: insId } }, status: StatusEnum.WAITING_APPROVAL }
-            , take: 2, order: { enrolledAt: 'ASC' }, relations: { user: true, course: true },
+            , take: 2, order: { enrolledAt: 'DESC', id: 'DESC' }, relations: { user: true, course: true },
             select: { user: { id: true, fullName: true, avatar: true }, course: { title: true, discountPrice: true, price: true } }
         })
         return last;
