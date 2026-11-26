@@ -120,7 +120,7 @@ export class PurchaseService {
         const purchase = await this.purchaseRepo.findOne({
             where: {
                 course: { id: courseId }, user: { id: userId }
-            }, relations: { user: true }, select: { user: { id: true } ,course:{id:true,title:true,Instractor:{id:true}}}
+            }, relations: { user: true, course: { Instractor: true } }, select: { user: { id: true } ,course:{id:true,title:true,Instractor:{id:true}}}
         })
         if (!purchase) throw new NotFoundException('Purchase Not Fond');
         const purchaseStatus = purchase.status;
@@ -138,12 +138,17 @@ export class PurchaseService {
         if (!submitted.affected) throw new BadRequestException('This purchase was already submitted');
         //creating notification for instractor
          const purchaseId=purchase.id; const courseTitle=purchase.course.title; const user_id=purchase.course.Instractor.id
-        await this.notifiService.creatNotification(
-        purchaseId,user_id,
-        `طلب جديد `,
-        `طلب جديد لكورس  ${courseTitle} اضغظ للتفاصيل `,
-        NotificationType.PURCHASE
-        )
+        // the proof is already saved: a notification problem must not turn a saved submission into an error
+        try {
+            await this.notifiService.creatNotification(
+                purchaseId, user_id,
+                `طلب جديد `,
+                `طلب جديد لكورس  ${courseTitle} اضغظ للتفاصيل `,
+                NotificationType.PURCHASE
+            );
+        } catch (e) {
+            console.error('notification failed after payment proof submit', e);
+        }
         
     }
 
