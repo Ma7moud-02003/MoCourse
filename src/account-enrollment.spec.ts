@@ -105,6 +105,17 @@ describe('EnrollmentService dashboard helpers', () => {
     await make({ find }).getStudentCourses(1, 'completed' as any);
     expect(find.mock.calls[0][0].where).toMatchObject({ user: { id: 1 }, status: 'completed' });
   });
+  it('my courses: empty list is [] (not an exception value)', async () => {
+    const r = await make({ find: jest.fn().mockResolvedValue([]) }).getStudentCourses(1);
+    expect(r).toEqual([]);
+  });
+  it('my courses: adds progressPercent, 0 when course has no lessons', async () => {
+    const find = jest.fn().mockResolvedValue([{ id: 1, course: { id: 10 } }, { id: 2, course: { id: 11 } }]);
+    const query = jest.fn().mockResolvedValue([{ courseId: '10', total: '4', done: '1' }]);
+    const r: any = await make({ find, manager: { query } }).getStudentCourses(1);
+    expect(r.map((x: any) => x.progressPercent)).toEqual([25, 0]);
+    expect(query.mock.calls[0][1]).toEqual([1, [10, 11]]);
+  });
   it('enrollCourse needs both ids', async () => {
     await expect(make({}).enrollCourse(1, undefined as any)).rejects.toThrow();
   });
