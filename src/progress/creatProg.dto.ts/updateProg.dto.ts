@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsPositive, Min } from "class-validator";
+import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsPositive, Min } from "class-validator";
 export class UpdateProgressDto{
 @IsNotEmpty()
 @IsNumber()
@@ -8,4 +8,9 @@ lessonId!:number;
 @IsNumber()
 @Min(0)
 lastPosition!:number;
+// only used by pdf/text lessons (they have no length): true means the student finished the lesson.
+// Ignored for video lessons, which complete by watching 90%.
+@IsOptional()
+@IsBoolean()
+completed?:boolean;
 }
