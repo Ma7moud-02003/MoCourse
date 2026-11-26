@@ -1,5 +1,5 @@
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
-import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn, Index } from "typeorm";
 import { QuestionEntity } from "../question/question.entity";
 import { StudentAnswerEntity } from "../student-answer/student_answer.entity";
 
@@ -29,6 +29,7 @@ export class ChoiceEntity {
     ({type:"timestamp",default:()=>CURRENT_TIMESTAMP,onUpdate:CURRENT_TIMESTAMP})
     updatedAt!: Date;
 
+    @Index('IDX_choice_question')
     @ManyToOne(
         () => QuestionEntity,
         question => question.choices,

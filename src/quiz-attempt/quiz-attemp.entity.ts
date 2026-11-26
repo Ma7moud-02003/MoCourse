@@ -1,6 +1,6 @@
 import { UserEntity } from "src/User/user.entity";
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
-import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique } from "typeorm";
+import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique, Index } from "typeorm";
 import { QuizEntity } from "../quiz/quiz.entity";
 import { StudentAnswerEntity } from "../student-answer/student_answer.entity";
 
@@ -43,6 +43,7 @@ export class QuizAttemptEntity {
     @Column({type:"timestamptz",nullable:true})
     submittedAt!: Date | null;
 
+    @Index('IDX_quiz_attempt_user')
     @ManyToOne(() => UserEntity,  user => user.quizAttempts,{onDelete: 'CASCADE'})
     user!: UserEntity;
 

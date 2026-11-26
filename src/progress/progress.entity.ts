@@ -2,7 +2,7 @@
 import { LessonsEntity } from "src/lesson/lessons.entity";
 import { UserEntity } from "src/User/user.entity";
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
-import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, Unique, UpdateDateColumn, Index } from "typeorm";
 @Unique(['user', 'lesson'])
 @Entity({name:'progreses'})
 export class ProgressEntity{
@@ -23,6 +23,7 @@ export class ProgressEntity{
 
   @Column({ type: 'timestamp', nullable: true })
   completedAt!: Date;
+  @Index('IDX_progreses_lesson')
   @ManyToOne(()=>LessonsEntity,(lesson)=>lesson.progress,{onDelete:'CASCADE'})
   lesson!:LessonsEntity
 

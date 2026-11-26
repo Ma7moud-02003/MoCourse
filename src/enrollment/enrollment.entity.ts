@@ -2,7 +2,7 @@ import { CourseEntity } from "src/course/course.entity";
 import { UserEntity } from "src/User/user.entity";
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
 import { EnrollmentStatus } from "src/utils/enums/enroll.enum";
-import {  Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, Unique } from "typeorm";
+import {  Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, Unique, Index } from "typeorm";
 
 @Entity({name:'enrollments'})
 @Unique('UQ_enrollments_user_course',['user','course'])
@@ -27,6 +27,7 @@ export class EnrollmentEntity{
       @ManyToOne(()=>UserEntity,(user)=>user.enrolls)
       user!:UserEntity
 
+       @Index('IDX_enrollments_course')
        @ManyToOne(()=>CourseEntity,(course)=>course.enrolls)
       course!:CourseEntity
 

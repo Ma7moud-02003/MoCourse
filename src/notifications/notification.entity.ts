@@ -1,6 +1,6 @@
 import { UserEntity } from "src/User/user.entity";
 import { NotificationType } from "src/utils/enums/notification.enum";
-import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, Index } from "typeorm";
 
 @Entity()
 export class NotificationEntity {
@@ -29,6 +29,7 @@ export class NotificationEntity {
     @CreateDateColumn()
     createdAt!: Date;
 
+    @Index('IDX_notification_user')
     @ManyToOne(() => UserEntity, (user) => user.notifications, {
         onDelete: 'CASCADE'
     })

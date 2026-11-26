@@ -3,7 +3,7 @@ import { QuizEntity } from "src/quiz/quiz.entity";
 import { SectionEntity } from "src/section/section.entity";
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
 import { LessonType } from "src/utils/enums/lessonType.enum";
-import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn, Index } from "typeorm";
 
 @Entity({name:'lessons'})
 export class LessonsEntity{
@@ -60,6 +60,7 @@ pdfPublicId!: string;
    
 
       
+    @Index('IDX_lessons_section')
     @ManyToOne(()=>SectionEntity,(section)=>section.lessons)
     section!:SectionEntity
 
