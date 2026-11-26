@@ -38,7 +38,6 @@ export class PurchaseController {
     confirmCheckout(@Param('id', new ParseIntPipe()) id: number
         , @Body() body: ConfirmCheckoutDto, @UploadedFile() file: any
         , @Payload() payload: paylodType.PayloadType) {
-        console.log(id, payload, body);
         return this.purServise.confirmCheckOut(id, body, payload.id, file);
     }
 
