@@ -1,6 +1,6 @@
 import { CourseEntity } from "src/course/course.entity";
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
-import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, Unique, UpdateDateColumn, Index } from "typeorm";
 import { UserEntity } from "src/User/user.entity";
 
 @Entity({name:'reviews'})
@@ -24,6 +24,7 @@ export class ReviewEntity {
     @UpdateDateColumn({type:"timestamp",default:()=>CURRENT_TIMESTAMP,onUpdate:CURRENT_TIMESTAMP})
     updatedAt!: Date;
 
+    @Index('IDX_reviews_course')
     @ManyToOne(() => CourseEntity, course => course.reviews, {
     nullable: true,
     // onDelete:'CASCADE'
