@@ -8,7 +8,7 @@ const qb = (raw: any[]) => {
   b.insert = () => (b.calls.push('insert'), b);
   b.into = (e: any) => (b.calls.push('into:' + e.name), b);
   b.values = (v: any) => (b.values_ = v, b);
-  b.orIgnore = () => (b.calls.push('orIgnore'), b);
+  b.onConflict = (c: string) => (b.calls.push('onConflict:' + c), b);
   b.execute = async () => ({ raw, identifiers: raw });
   return b;
 };
@@ -29,10 +29,10 @@ describe('one enrollment per student and course', () => {
     expect(u?.columns).toEqual(['user', 'course']);
   });
 
-  it('enrollCourse inserts once with ON CONFLICT DO NOTHING and notifies', async () => {
+  it('enrollCourse inserts once with ON CONFLICT on the unique rule only and notifies', async () => {
     const { svc, builder, notif } = make({});
     await svc.enrollCourse(1, 5);
-    expect(builder.calls).toEqual(['insert', 'into:EnrollmentEntity', 'orIgnore']);
+    expect(builder.calls).toEqual(['insert', 'into:EnrollmentEntity', 'onConflict:ON CONSTRAINT "UQ_enrollments_user_course" DO NOTHING']);
     expect(notif.creatNotification).toHaveBeenCalledTimes(1);
   });
 
