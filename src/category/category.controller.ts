@@ -17,9 +17,9 @@ export class CategoryController {
         return this.catService.creatCat(cat);
     }
 
+    // any logged-in user (students too) can list categories; creating stays admin only
     @Get('all')
-    @Roles(UserRoles.ADMIN, UserRoles.INSTRACTOR)
-    @UseGuards(AuthGuard, Roleguard)
+    @UseGuards(AuthGuard)
     getAll() {
         return this.catService.getAllCatogs();
     }
