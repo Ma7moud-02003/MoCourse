@@ -15,4 +15,10 @@ fullName:string|undefined;
 @IsOptional()
 password:string|undefined;
 
+// needed when a user changes his own password (not used by the admin route)
+@MaxLength(150)
+@IsString()
+@IsOptional()
+currentPassword:string|undefined;
+
 }
