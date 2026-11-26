@@ -16,8 +16,8 @@ export  class CertificateEntity{
   @Column()
   issuedAt!: Date;
 
-  @Column({ nullable: true })
-  completedAt!: Date;
+  @Column({ nullable: true, type: 'timestamp' })
+  completedAt!: Date | null;
 
   @Column()
   courseTitle!: string;
