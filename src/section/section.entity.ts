@@ -3,7 +3,7 @@ import { CourseEntity } from "src/course/course.entity";
 import { LessonsEntity } from "src/lesson/lessons.entity";
 import { QuizEntity } from "src/quiz/quiz.entity";
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
-import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @Entity({name:'sections'})
 export class SectionEntity{
