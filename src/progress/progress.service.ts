@@ -59,10 +59,9 @@ export class ProgressService {
         if (!lesson) throw new BadRequestException();
         if (!lesson.duration) throw new BadRequestException();
         const persentage = (dto.lastPosition * 100) / lesson.duration;
-        progress.lastPosition = Math.max(
-            progress.lastPosition,
-            dto.lastPosition
-        );
+        // the latest place the student reached (not the furthest), clamped to the lesson length,
+        // so "continue where you stopped" opens the right spot even after going back
+        progress.lastPosition = Math.min(Math.max(Math.floor(dto.lastPosition), 0), lesson.duration);
         if (persentage >= 90) {
             progress.completed = true;
             progress.completedAt ??= new Date();
@@ -131,6 +130,64 @@ export class ProgressService {
     public async getStudentProgressForInstructor(courseId: number, studentId: number, insId: number) {
         await this.enrollService.assertInstructorCanViewStudent(courseId, studentId, insId);
         return await this.getCourseProgress(courseId, studentId);
+    }
+
+    /**
+     * Per-lesson progress of one student in a course, for the course's own instructor.
+     * Every lesson of the course is listed (in section and lesson order), watched or not.
+     */
+    public async getStudentLessonsProgressForInstructor(courseId: number, studentId: number, insId: number) {
+        await this.enrollService.assertInstructorCanViewStudent(courseId, studentId, insId);
+        const rows: any[] = await this.progressRepo.manager.query(
+            `SELECT s.id AS "sectionId", s.title AS "sectionTitle", l.id AS "lessonId", l.title AS "title", l.duration AS "duration",
+                    p.completed AS "completed", p."lastPosition" AS "lastPosition", p."completedAt" AS "completedAt"
+             FROM sections s
+             JOIN lessons l ON l."sectionId" = s.id
+             LEFT JOIN progreses p ON p."lessonId" = l.id AND p."userId" = $2
+             WHERE s."courseId" = $1
+             ORDER BY s."order" ASC, s.id ASC, l."order" ASC, l.id ASC`, [courseId, studentId]);
+        const lessons = rows.map(r => ({
+            sectionId: Number(r.sectionId), sectionTitle: r.sectionTitle,
+            lessonId: Number(r.lessonId), title: r.title,
+            duration: r.duration == null ? null : Number(r.duration),
+            completed: r.completed === true,
+            lastPosition: r.lastPosition == null ? 0 : Number(r.lastPosition),
+            completedAt: r.completedAt ?? null,
+        }));
+        const completedLessons = lessons.filter(l => l.completed).length;
+        const totalLessons = lessons.length;
+        return {
+            courseId, studentId, totalLessons, completedLessons,
+            persentage: totalLessons > 0 ? (completedLessons * 100) / totalLessons : 0,
+            lessons,
+        };
+    }
+
+    /**
+     * Where the student should continue in a course: the lesson they touched last, with the second they stopped at.
+     * A student who has not started gets the first lesson at second 0. A course with no lessons gives null.
+     */
+    public async getResumePoint(courseId: number, userId: number) {
+        const enrolled = await this.lessonService.verifyStudentEnrollment(userId, courseId);
+        if (!enrolled) throw new UnauthorizedException('You Need To Purchase This Course Frist');
+        const last: any[] = await this.progressRepo.manager.query(
+            `SELECT l.id AS "lessonId", l.title AS "title", l.duration AS "duration", p."lastPosition" AS "lastPosition", p.completed AS "completed"
+             FROM progreses p
+             JOIN lessons l ON l.id = p."lessonId"
+             JOIN sections s ON s.id = l."sectionId"
+             WHERE p."userId" = $1 AND s."courseId" = $2
+             ORDER BY p."updatedAt" DESC, p.id DESC LIMIT 1`, [userId, courseId]);
+        const row = last[0] ?? (await this.progressRepo.manager.query(
+            `SELECT l.id AS "lessonId", l.title AS "title", l.duration AS "duration", 0 AS "lastPosition", false AS "completed"
+             FROM lessons l JOIN sections s ON s.id = l."sectionId"
+             WHERE s."courseId" = $1
+             ORDER BY s."order" ASC, s.id ASC, l."order" ASC, l.id ASC LIMIT 1`, [courseId]))[0];
+        if (!row) return null;
+        return {
+            lessonId: Number(row.lessonId), title: row.title,
+            duration: row.duration == null ? null : Number(row.duration),
+            lastPosition: Number(row.lastPosition ?? 0), completed: row.completed === true,
+        };
     }
 
     /**

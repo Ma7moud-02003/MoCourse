@@ -8,7 +8,7 @@ function setup() {
     save: jest.fn(async (x) => x),
   };
   const jwt: any = { signAsync: jest.fn().mockResolvedValue('token') };
-  return { svc: new UserService(repo, jwt, {} as any), repo };
+  return { svc: new UserService(repo, jwt, {} as any, {} as any), repo };
 }
 const dto = (role?: any): any => ({ fullName: 'A', email: 'a@a.com', password: 'secret123', role });
 
@@ -44,7 +44,7 @@ describe('deleteUser guard', () => {
       delete: jest.fn(async () => ({ affected: 1 })),
     };
     const repo: any = { manager: { transaction: async (fn: any) => fn(m) } };
-    return { svc: new UserService(repo, {} as any, {} as any), m };
+    return { svc: new UserService(repo, {} as any, {} as any, {} as any), m };
   }
   it('locks the user row, then refuses when the account has attempts, deleting nothing', async () => {
     const { svc, m } = withManager({ id: 4 }, 2);

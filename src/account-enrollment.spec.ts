@@ -34,7 +34,7 @@ describe('UserService.getInstractorInfo', () => {
   const make = (role: UserRoles, payment: any) => {
     const repo = { findOne: jest.fn().mockResolvedValue({ id: 1, role, password: 'x', fullName: 'a' }) };
     const pay = { findInsPaymentInfo: jest.fn().mockResolvedValue(payment) };
-    return { svc: new UserService(repo as any, {} as any, pay as any), pay };
+    return { svc: new UserService(repo as any, {} as any, pay as any, {} as any), pay };
   };
   it('student: no payment lookup, paymentInfo null', async () => {
     const { svc, pay } = make(UserRoles.STUDENT, null);

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Put, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Put, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { UserService } from './user.service';
 import { RegisterDto } from './Dtos/register.dto';
 import { LoginDto } from './Dtos/login.dto';
@@ -8,6 +8,9 @@ import { Roles } from '../../common/Decorators/role.decorator';
 import { UserRoles } from 'src/utils/enums/userRole.enum';
 import { Roleguard } from '../../common/Guards/role.guard';
 import { UpdateUserDto } from './Dtos/update.dto';
+import { DeleteAccountDto } from './Dtos/delete-account.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { MAX_AVATAR_BYTES } from 'src/utils/upload-validation';
 import * as paylodType from 'src/utils/types/paylod.type';
 
 @Controller('api/user/')
@@ -40,15 +43,15 @@ export class UserController {
     @Roles(UserRoles.ADMIN)
     @UseGuards(AuthGuard,Roleguard)
     @Get('all_users')
-    getAll(){
-        return this.userService.getAllUsers();
+    getAll(@Query('page') page?: string, @Query('limit') limit?: string){
+        return this.userService.getAllUsers(page, limit);
     }
 
     // Update User By Himself
     @Patch('update')
     @UseGuards(AuthGuard)
     updeteUserByUser(@Payload() payload:paylodType.PayloadType,@Body() body:UpdateUserDto){
-     return this.userService.updateUser(payload.id,body)
+     return this.userService.updateUser(payload.id,body,true)
     }
 
       // Update User By Admin
@@ -62,8 +65,16 @@ export class UserController {
     // Delete User By User 
       @Delete('delete')
     @UseGuards(AuthGuard)
-    deleteUserByUser(@Payload() payload:paylodType.PayloadType){
-     return this.userService.deleteUser(payload.id)
+    deleteUserByUser(@Payload() payload:paylodType.PayloadType,@Body() body:DeleteAccountDto){
+     return this.userService.deleteOwnAccount(payload.id,body.password)
+    }
+
+    // Change own profile photo (multipart field "avatar", image up to 2 MB)
+    @Patch('avatar')
+    @UseGuards(AuthGuard)
+    @UseInterceptors(FileInterceptor('avatar',{limits:{fileSize:MAX_AVATAR_BYTES+1}}))
+    updateAvatar(@Payload() payload:paylodType.PayloadType,@UploadedFile() file:Express.Multer.File){
+     return this.userService.updateAvatar(payload.id,file)
     }
 
 

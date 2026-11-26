@@ -38,6 +38,21 @@ export class ProgressController {
         return this.progService.getStudentProgressForInstructor(courseId, studentId, payload.id);
     }
 
+    // per-lesson progress of one student (instructor of the course only)
+    @Get('instractor/lessons_progress/:courseId/:studentId')
+    @Roles(UserRoles.INSTRACTOR)
+    @UseGuards(AuthGuard, Roleguard)
+    getStudentLessonsProgressForInstractor(@Param('courseId', new ParseIntPipe) courseId: number, @Param('studentId', new ParseIntPipe) studentId: number, @Payload() payload: paylodType.PayloadType) {
+        return this.progService.getStudentLessonsProgressForInstructor(courseId, studentId, payload.id);
+    }
+
+    // where to continue in a course: last lesson touched + the second the student stopped at
+    @Get('resume/:courseId')
+    @UseGuards(AuthGuard)
+    getResumePoint(@Param('courseId', new ParseIntPipe) courseId: number, @Payload() payload: paylodType.PayloadType) {
+        return this.progService.getResumePoint(courseId, payload.id);
+    }
+
     @Patch('update_lesson')
     @UseGuards(AuthGuard)
     updateProgress(@Body() body: UpdateProgressDto, @Payload() payload: paylodType.PayloadType) {
