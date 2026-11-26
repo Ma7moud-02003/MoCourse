@@ -1,0 +1,67 @@
+import { Client } from 'pg';
+import * as path from 'path';
+
+type QueryFn = (sql: string) => Promise<Record<string, any>[]>;
+
+const UNIQUE_NAME = 'UQ_purchase_user_course';
+
+/**
+ * Outside production the app runs TypeORM with `synchronize: true`. Adding the one-purchase-per-student-
+ * and-course rule while duplicate rows exist makes that sync fail with a raw index error and a misleading
+ * "Unable to connect to the database. Retrying" loop. This check runs before the app module is created and
+ * refuses to start in exactly that state: the rule is missing and duplicate (userId, courseId) rows exist.
+ * It lists the rows (id, status, amount, payment method, transaction id), only reads, and never decides which one to keep:
+ * that is the owner's call. A fresh database, one that already has the rule, or one without duplicates is
+ * untouched.
+ */
+export async function checkPurchaseSchemaSafety(query: QueryFn): Promise<void> {
+  const table = await query(
+    `SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'purchase'`,
+  );
+  if (!table.length) return;
+  const haveRule = await query(`SELECT 1 FROM pg_constraint WHERE conname = '${UNIQUE_NAME}'`);
+  if (haveRule.length) return;
+  const dups = (await query(
+    `SELECT "userId", "courseId", json_agg(json_build_object('id', id, 'status', status, 'amount', amount, 'paymentMethod', "paymentMethod", 'transactionId', "transactionId", 'enrolledAt', "enrolledAt") ORDER BY id) AS rows
+       FROM purchase GROUP BY "userId", "courseId" HAVING count(*) > 1 ORDER BY "userId", "courseId"`,
+  )) as {
+    userId: number | null;
+    courseId: number | null;
+    rows: { id: number; status: string; amount: number; paymentMethod: string | null; transactionId: string | null; enrolledAt: string | null }[];
+  }[];
+  if (!dups.length) return;
+  const list = dups
+    .map(
+      (d) =>
+        `userId=${d.userId} courseId=${d.courseId} purchase: ` +
+        d.rows.map((r) => `#${r.id} (${r.status}, amount=${r.amount}, ${r.paymentMethod}, transactionId=${r.transactionId}, enrolledAt=${r.enrolledAt})`).join(', '),
+    )
+    .join('; ');
+  throw new Error(
+    `Refusing to start: purchase has ${dups.length} duplicate (userId, courseId) group(s) blocking the one-purchase-request-per-course rule: ${list}. ` +
+      `Nothing was changed. Review each group and keep one purchase request per student and course, then start the app again. If this database is managed with migrations, run "npm run migration:run" first; a database that the app syncs itself needs no migration command.`,
+  );
+}
+
+/** Runs the check against the configured database. Only needed when synchronize is on (everything except production). */
+export async function assertPurchaseSchemaSafety(): Promise<void> {
+  if (process.env.NODE_ENV === 'production') return;
+  try {
+    process.loadEnvFile(path.resolve(process.cwd(), `.env.${process.env.NODE_ENV}`));
+  } catch {
+    // no env file: the variables must already be set in the environment
+  }
+  const client = new Client({
+    host: process.env.DB_HOST || 'localhost',
+    port: Number(process.env.DB_PORT) || 5432,
+    user: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE,
+  });
+  await client.connect();
+  try {
+    await checkPurchaseSchemaSafety(async (sql) => (await client.query(sql)).rows);
+  } finally {
+    await client.end();
+  }
+}

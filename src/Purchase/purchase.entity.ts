@@ -3,9 +3,10 @@ import { UserEntity } from "src/User/user.entity";
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
 import { PaymentMethoeEnum } from "src/utils/enums/paymentMethode.enum";
 import { StatusEnum } from "src/utils/enums/purchaseStatus.enum";
-import {  Column, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import {  Column, Entity, ManyToOne, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
 
 @Entity({name:'purchase'})
+@Unique('UQ_purchase_user_course',['user','course'])
 export class PurchaseEntity{
     @PrimaryGeneratedColumn()
     id!:number;

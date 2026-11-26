@@ -23,6 +23,13 @@ describe('upload routes over HTTP (stubbed Cloudinary)', () => {
   const purchaseRepo: any = {
     findOne: jest.fn(async () => ({ id: 1, status: StatusEnum.PENDING, user: { id: 3 }, course: { id: 5, title: 'C', Instractor: { id: 9 } } })),
     save: jest.fn(async (x) => x),
+    // conditional status update used when a payment proof is submitted
+    createQueryBuilder: () => {
+      const b: any = {};
+      b.update = () => b; b.set = () => b; b.where = () => b;
+      b.execute = async () => ({ affected: 1 });
+      return b;
+    },
   };
   const courseRepo: any = { create: jest.fn((x) => x), save: jest.fn(async (x) => x) };
   const notif: any = { creatNotification: jest.fn() };

@@ -2,7 +2,7 @@ import { assertImageFile } from 'src/utils/upload-validation';
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PurchaseEntity } from './purchase.entity';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { CourseService } from 'src/course/course.service';
 import { StatusEnum } from 'src/utils/enums/purchaseStatus.enum';
 import { PaymentMethoeEnum } from 'src/utils/enums/paymentMethode.enum';
@@ -45,6 +45,10 @@ export class PurchaseService {
         if (!course) throw new NotFoundException('Course does not exist');
         // a draft course cannot be bought
         if (course.isPublished === false) throw new NotFoundException('Course does not exist');
+        // a student who is already enrolled never gets a new purchase request
+        if (await this.enrollService.verifyStudentEnrollment(studentId, courseId)) {
+            throw new BadRequestException('You alrealdy own this course');
+        }
         const exist = await this.purchaseRepo.findOne({
             where: {
                 course: { id: courseId },
@@ -52,29 +56,8 @@ export class PurchaseService {
 
             }
         })
-        const status = StatusEnum;
-        if (exist) {
-            switch (exist?.status) {
-                case status.PAID:
-                    throw new BadRequestException('You alrealdy own this course');
-                case status.WAITING_APPROVAL:
-                    return {
-                        message: 'طلبك قيد المراجعة من المدرس'
-                    }
-                case status.PENDING:
-                    return {
-                        message: 'اذهب للدفع ثم اضف بيانات الدفع وانتظر التاكيد'
-                    }
-
-                case status.FAILED: {
-                    exist.status = status.PENDING;
-                    await this.purchaseRepo.save(exist)
-                    return {
-                        message: 'اذهب للدفع ثم اضف بيانات الدفع وانتظر التاكيد'
-                    }
-                }
-            }
-        }
+        // one purchase request per student and course (database rule): a repeat request follows the existing one
+        if (exist) return await this.answerForExistingPurchase(exist);
         const amount = course.discountPrice ?? course.price;
         const purchase = this.purchaseRepo.create({
             course: { id: courseId },
@@ -83,10 +66,42 @@ export class PurchaseService {
             status: StatusEnum.PENDING
 
         })
-       const pur= await this.purchaseRepo.save(purchase);
-     
+        try {
+            await this.purchaseRepo.save(purchase);
+        } catch (err) {
+            // two requests arrived together: the other one created the row first, so follow it
+            if (err instanceof QueryFailedError && (err.driverError as { code?: string })?.code == '23505') {
+                const winner = await this.purchaseRepo.findOne({ where: { course: { id: courseId }, user: { id: studentId } } });
+                if (winner) return await this.answerForExistingPurchase(winner);
+            }
+            throw err;
+        }
+
         return {
             message: 'اذهب للدفع ثم اضف بيانات الدفع وانتظر التاكيد'
+        }
+    }
+
+    /** The answer for a student who already has a purchase request for this course (no second request is created). */
+    private async answerForExistingPurchase(exist: PurchaseEntity) {
+        const status = StatusEnum;
+        switch (exist.status) {
+            case status.PAID:
+                throw new BadRequestException('You alrealdy own this course');
+            case status.WAITING_APPROVAL:
+                return {
+                    message: 'طلبك قيد المراجعة من المدرس'
+                }
+            case status.FAILED:
+                // a rejected request can be retried: the same request goes back to PENDING (only if it is still rejected)
+                await this.purchaseRepo.update({ id: exist.id, status: status.FAILED }, { status: status.PENDING });
+                return {
+                    message: 'اذهب للدفع ثم اضف بيانات الدفع وانتظر التاكيد'
+                }
+            default:
+                return {
+                    message: 'اذهب للدفع ثم اضف بيانات الدفع وانتظر التاكيد'
+                }
         }
     }
 
@@ -105,7 +120,7 @@ export class PurchaseService {
         const purchase = await this.purchaseRepo.findOne({
             where: {
                 course: { id: courseId }, user: { id: userId }
-            }, relations: { user: true }, select: { user: { id: true } ,course:{id:true,title:true,Instractor:{id:true}}}
+            }, relations: { user: true, course: { Instractor: true } }, select: { user: { id: true } ,course:{id:true,title:true,Instractor:{id:true}}}
         })
         if (!purchase) throw new NotFoundException('Purchase Not Fond');
         const purchaseStatus = purchase.status;
@@ -114,21 +129,26 @@ export class PurchaseService {
         const image = await this.cloudService.uploadFile(file, 'course/images', 'image');
         console.log(purchase.user.id);
         if (purchase.user.id != userId) throw new UnauthorizedException('You Can not Access That Purchase')
-        purchase.status = StatusEnum.WAITING_APPROVAL;
-        purchase.transactionId = transaction;
-        purchase.paymentMethod = paymentMethode;
-        purchase.thumbnail = image.secure_url;
-        purchase.publicId = image.public_id;
-        
-         await this.purchaseRepo.save(purchase);
+        // only a request that is still PENDING (or rejected, being retried) can move to WAITING_APPROVAL: a stale or
+        // repeated submission can never overwrite a decision the instructor made in the meantime
+        const submitted = await this.purchaseRepo.createQueryBuilder().update(PurchaseEntity)
+            .set({ status: StatusEnum.WAITING_APPROVAL, transactionId: transaction, paymentMethod: paymentMethode, thumbnail: image.secure_url, publicId: image.public_id })
+            .where('id = :id AND status IN (:...open)', { id: purchase.id, open: [StatusEnum.PENDING, StatusEnum.FAILED] })
+            .execute();
+        if (!submitted.affected) throw new BadRequestException('This purchase was already submitted');
         //creating notification for instractor
          const purchaseId=purchase.id; const courseTitle=purchase.course.title; const user_id=purchase.course.Instractor.id
-        await this.notifiService.creatNotification(
-        purchaseId,user_id,
-        `طلب جديد `,
-        `طلب جديد لكورس  ${courseTitle} اضغظ للتفاصيل `,
-        NotificationType.PURCHASE
-        )
+        // the proof is already saved: a notification problem must not turn a saved submission into an error
+        try {
+            await this.notifiService.creatNotification(
+                purchaseId, user_id,
+                `طلب جديد `,
+                `طلب جديد لكورس  ${courseTitle} اضغظ للتفاصيل `,
+                NotificationType.PURCHASE
+            );
+        } catch (e) {
+            console.error('notification failed after payment proof submit', e);
+        }
         
     }
 

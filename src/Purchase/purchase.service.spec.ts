@@ -118,3 +118,100 @@ describe('updatPurchaseStatus', () => {
     expect(db.state.status).toBe(StatusEnum.WAITING_APPROVAL);
   });
 });
+
+describe('buyCourse: one purchase request per student and course', () => {
+  const make = (opts: { enrolled?: boolean; existing?: any; saveError?: any; winner?: any }) => {
+    const repo: any = {
+      findOne: jest.fn().mockResolvedValueOnce(opts.existing ?? null).mockResolvedValue(opts.winner ?? null),
+      create: jest.fn((x) => x),
+      save: opts.saveError ? jest.fn().mockRejectedValue(opts.saveError) : jest.fn().mockResolvedValue({ id: 1 }),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    const course: any = { getSingleCourse: jest.fn().mockResolvedValue({ id: 5, isPublished: true, price: 100, discountPrice: null }) };
+    const enroll: any = { verifyStudentEnrollment: jest.fn().mockResolvedValue(!!opts.enrolled) };
+    return { svc: new PurchaseService(repo, course, enroll, {} as any, {} as any), repo };
+  };
+  const uniqueViolation = () => {
+    const { QueryFailedError } = require('typeorm');
+    return new QueryFailedError('insert', [], Object.assign(new Error('dup'), { code: '23505' }));
+  };
+
+  it('an enrolled student gets no new purchase request', async () => {
+    const { svc, repo } = make({ enrolled: true });
+    await expect(svc.buyCourse(3, 5)).rejects.toThrow(/alrealdy own/);
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it('first request creates one PENDING purchase', async () => {
+    const { svc, repo } = make({});
+    await svc.buyCourse(3, 5);
+    expect(repo.save).toHaveBeenCalledTimes(1);
+    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ status: StatusEnum.PENDING, amount: 100 }));
+  });
+
+  it('a request waiting for approval stays the one to follow: nothing created or changed', async () => {
+    const { svc, repo } = make({ existing: { id: 7, status: StatusEnum.WAITING_APPROVAL } });
+    const r: any = await svc.buyCourse(3, 5);
+    expect(r.message).toMatch(/قيد المراجعة/);
+    expect(repo.save).not.toHaveBeenCalled();
+    expect(repo.update).not.toHaveBeenCalled();
+  });
+
+  it('a pending request is followed, not duplicated', async () => {
+    const { svc, repo } = make({ existing: { id: 7, status: StatusEnum.PENDING } });
+    await svc.buyCourse(3, 5);
+    expect(repo.save).not.toHaveBeenCalled();
+    expect(repo.update).not.toHaveBeenCalled();
+  });
+
+  it('a rejected request is retried on the same row, only while it is still rejected', async () => {
+    const { svc, repo } = make({ existing: { id: 7, status: StatusEnum.FAILED } });
+    await svc.buyCourse(3, 5);
+    expect(repo.save).not.toHaveBeenCalled();
+    expect(repo.update).toHaveBeenCalledWith({ id: 7, status: StatusEnum.FAILED }, { status: StatusEnum.PENDING });
+  });
+
+  it('two simultaneous first requests: the loser follows the winner instead of failing', async () => {
+    const { svc } = make({ saveError: uniqueViolation(), winner: { id: 9, status: StatusEnum.PENDING } });
+    const r: any = await svc.buyCourse(3, 5);
+    expect(r.message).toMatch(/اذهب للدفع/);
+  });
+
+  it('other save errors are not swallowed', async () => {
+    const { svc } = make({ saveError: new Error('db down') });
+    await expect(svc.buyCourse(3, 5)).rejects.toThrow('db down');
+  });
+});
+
+describe('confirmCheckOut: proof submit and instructor notification', () => {
+  const png: any = { buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2]), mimetype: 'image/png', size: 10, originalname: 'a.png' };
+  const dto: any = { transactionId: 't', paymentMethod: 'instapay' };
+  function make(affected: number, notifyFails = false) {
+    const row = { id: 1, status: StatusEnum.PENDING, user: { id: 3 }, course: { id: 5, title: 'C', Instractor: { id: 9 } } };
+    const repo: any = {
+      findOne: jest.fn(async () => row),
+      createQueryBuilder: () => { const b: any = {}; b.update = () => b; b.set = () => b; b.where = () => b; b.execute = async () => ({ affected }); return b; },
+    };
+    const cloud: any = { uploadFile: jest.fn(async () => ({ secure_url: 'u', public_id: 'p' })) };
+    const notif: any = { creatNotification: jest.fn(notifyFails ? async () => { throw new Error('boom'); } : async () => undefined) };
+    return { svc: new PurchaseService(repo, {} as any, {} as any, cloud, notif), repo, notif };
+  }
+  it('loads the course and its instructor, and notifies that instructor once', async () => {
+    const { svc, repo, notif } = make(1);
+    await expect(svc.confirmCheckOut(5, dto, 3, png)).resolves.toBeUndefined();
+    expect(repo.findOne.mock.calls[0][0].relations).toEqual({ user: true, course: { Instractor: true } });
+    expect(notif.creatNotification).toHaveBeenCalledTimes(1);
+    expect(notif.creatNotification.mock.calls[0][1]).toBe(9);
+  });
+  it('a stale submit (row already decided) gets 400 and sends no notification', async () => {
+    const { svc, notif } = make(0);
+    await expect(svc.confirmCheckOut(5, dto, 3, png)).rejects.toBeInstanceOf(BadRequestException);
+    expect(notif.creatNotification).not.toHaveBeenCalled();
+  });
+  it('a notification failure does not turn a saved submission into an error', async () => {
+    const { svc } = make(1, true);
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    await expect(svc.confirmCheckOut(5, dto, 3, png)).resolves.toBeUndefined();
+    spy.mockRestore();
+  });
+});
