@@ -68,4 +68,19 @@ public uploadFile(
             input.pipe(out);
         });
     }
+
+    /**
+     * Best-effort delete of one asset by its exact public_id. Never throws: a provider problem is only logged,
+     * so cleanup can never turn a finished request into an error. Returns true only when the provider said "ok".
+     */
+    public async destroyAsset(publicId: string, resourceType: 'image' | 'video' | 'raw' = 'image'): Promise<boolean> {
+        if (!publicId) return false;
+        try {
+            const res = await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+            return res?.result === 'ok';
+        } catch (e) {
+            console.error('cloudinary cleanup failed for', publicId, e);
+            return false;
+        }
+    }
 }
