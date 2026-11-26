@@ -46,7 +46,6 @@ export class CourseController {
   @Roles(UserRoles.INSTRACTOR, UserRoles.STUDENT)
   @UseGuards(AuthGuard, Roleguard)
   getForInstarctor(@Payload() payload: paylodType.PayloadType) {
-    console.log(payload.id);
     return this.courseServise.getInsCourses(payload);
   }
 
@@ -60,7 +59,6 @@ export class CourseController {
   @Patch('update/:id')
   update(@Param('id', new ParseIntPipe) id: number, @Body() body: any,
     @Payload() payload: paylodType.PayloadType, @UploadedFile() file: any) {
-      console.log(body.isPublished);
     return this.courseServise.updateCourse(body, id, payload.id, payload.role, file)
   }
 
@@ -78,7 +76,6 @@ export class CourseController {
   @UseGuards(AuthGuard, Roleguard)
   @Delete('delete/:id')
   delete(@Param('id', new ParseIntPipe) id: number, @Payload() payload: paylodType.PayloadType) {
-    console.log(payload.role, payload.id);
     return this.courseServise.deleteCourse(id, payload.id, payload.role);
   }
 

@@ -45,3 +45,31 @@ describe('CourseService.getCourseDetails quizzes', () => {
     expect(courseRepo.findOne.mock.calls[0][0].select.quizzes.isPublished).toBe(true);
   });
 });
+
+import { priceFilter } from './course.service';
+
+describe('priceFilter', () => {
+  it('sends nothing when no bound is given', () => {
+    expect(priceFilter(undefined, undefined)).toEqual({});
+    expect(priceFilter(NaN, NaN)).toEqual({});
+  });
+  it('works with only min, only max, or 0', () => {
+    expect(priceFilter(50, NaN)).toHaveProperty('price');
+    expect(priceFilter(NaN, 100)).toHaveProperty('price');
+    expect(priceFilter(0, NaN)).toHaveProperty('price');
+    expect(priceFilter(0, 0)).toHaveProperty('price');
+    expect(priceFilter(10, 20)).toHaveProperty('price');
+  });
+});
+
+describe('CourseService.addNewCourse', () => {
+  it('sets level and requirements on create', async () => {
+    const create = jest.fn((x) => x);
+    const repo: any = { create, save: jest.fn(async (x) => x) };
+    const cloud: any = { uploadFile: jest.fn(async () => ({ secure_url: 'u', public_id: 'p' })) };
+    const svc = new CourseService(repo, cloud, {} as any);
+    const file: any = { mimetype: 'image/png', size: 10, buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]) };
+    await svc.addNewCourse({ title: 't', level: 'beginner', requirements: ['a'], categoryId: 1 } as any, file, 3);
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ level: 'beginner', requirements: ['a'] }));
+  });
+});

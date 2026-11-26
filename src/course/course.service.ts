@@ -4,7 +4,7 @@ import { CouurseDto } from './dtos/course.dto';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CourseEntity } from './course.entity';
-import { Between, In, Like, Repository } from 'typeorm';
+import { Between, In, LessThanOrEqual, Like, MoreThanOrEqual, Repository } from 'typeorm';
 import { QuizEntity } from 'src/quiz/quiz.entity';
 import { QuizAttemptEntity } from 'src/quiz-attempt/quiz-attemp.entity';
 import { PayloadType } from 'src/utils/types/paylod.type';
@@ -23,6 +23,16 @@ export function parsePublished(value: unknown): boolean | undefined {
     if (v === 'true' || v === '1') return true;
     if (v === 'false' || v === '0') return false;
     throw new BadRequestException('isPublished must be true or false');
+}
+
+// either bound may be sent alone; 0 is a valid bound; NaN/undefined means not sent
+export function priceFilter(minPrice?: number, maxPrice?: number) {
+    const hasMin = typeof minPrice === 'number' && !Number.isNaN(minPrice);
+    const hasMax = typeof maxPrice === 'number' && !Number.isNaN(maxPrice);
+    if (hasMin && hasMax) return { price: Between(minPrice, maxPrice) };
+    if (hasMin) return { price: MoreThanOrEqual(minPrice) };
+    if (hasMax) return { price: LessThanOrEqual(maxPrice) };
+    return {};
 }
 
 @Injectable()
@@ -59,6 +69,8 @@ export class CourseService {
             isPublished:dto.isPublished,
             publicId: image.public_id,
             covers: dto.covers,
+            level: dto.level,
+            requirements: dto.requirements,
             category: { id: dto.categoryId }
         })
         return this.courseRepo.save(course);
@@ -176,11 +188,10 @@ export class CourseService {
             // drafts are hidden from the public list; admin sees everything
             ...(role === UserRoles.ADMIN ? {} : { isPublished: true }),
             ...(title ? { title: Like(`%${title}%`) } : {}),
-            ...(minPrice && maxPrice ? { price: Between(minPrice, maxPrice) } : {}),
+            ...priceFilter(minPrice, maxPrice),
             ...(categoryId ? { category: { id: categoryId } } : {}),
             ...(level ? { level: level } : {})
         }
-        console.log(minPrice, maxPrice);
         return await this.courseRepo.find({
             where: query,
             relations: {
