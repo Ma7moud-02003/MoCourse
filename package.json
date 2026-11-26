@@ -17,6 +17,7 @@
     "migration:run": "nest build && typeorm migration:run -d dist/database/data-source.js",
     "migration:revert": "nest build && typeorm migration:revert -d dist/database/data-source.js",
     "migration:drift": "nest build && node dist/database/drift.js",
+    "report:enrollment-completed-at": "nest build && node dist/database/enrollment-completed-at-report.js",
     "migration:show": "nest build && typeorm migration:show -d dist/database/data-source.js",
     "test:watch": "cross-env NODE_ENV=test jest --watch",
     "test:cov": "cross-env NODE_ENV=test jest --coverage",
