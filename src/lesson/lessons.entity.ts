@@ -1,8 +1,6 @@
-import { CategoryEntity } from "src/category/category.entity";
 import { ProgressEntity } from "src/progress/progress.entity";
 import { QuizEntity } from "src/quiz/quiz.entity";
 import { SectionEntity } from "src/section/section.entity";
-import { UserEntity } from "src/User/user.entity";
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
 import { LessonType } from "src/utils/enums/lessonType.enum";
 import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
