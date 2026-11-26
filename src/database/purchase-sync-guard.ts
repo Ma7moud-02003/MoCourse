@@ -34,7 +34,7 @@ export async function checkPurchaseSchemaSafety(query: QueryFn): Promise<void> {
     .map(
       (d) =>
         `userId=${d.userId} courseId=${d.courseId} purchase: ` +
-        d.rows.map((r) => `#${r.id} (${r.status}, amount=${r.amount}, ${r.paymentMethod}, transactionId=${r.transactionId}, updatedAt=${r.enrolledAt})`).join(', '),
+        d.rows.map((r) => `#${r.id} (${r.status}, amount=${r.amount}, ${r.paymentMethod}, transactionId=${r.transactionId}, enrolledAt=${r.enrolledAt})`).join(', '),
     )
     .join('; ');
   throw new Error(
