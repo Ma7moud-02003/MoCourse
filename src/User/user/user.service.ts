@@ -11,6 +11,11 @@ import { JwtService } from '@nestjs/jwt';
 import { PayloadType } from 'src/utils/types/paylod.type';
 import { QuizAttemptEntity } from 'src/quiz-attempt/quiz-attemp.entity';
 import { UpdateUserDto } from './Dtos/update.dto';
+import { pageResult, parsePaging } from 'src/utils/pagination';
+import { CourseEntity } from 'src/course/course.entity';
+import { EnrollmentEntity } from 'src/enrollment/enrollment.entity';
+import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
+import { assertImageFile, MAX_AVATAR_BYTES } from 'src/utils/upload-validation';
 import { PaymentinfoService } from 'src/instructor-payment-info/paymentinfo/paymentinfo.service';
 
 @Injectable()
@@ -19,7 +24,8 @@ export class UserService {
     @InjectRepository(UserEntity)
     private userRepo:Repository<UserEntity>,
     private jwtService:JwtService,
-    private payment:PaymentinfoService
+    private payment:PaymentinfoService,
+    private cloudinary:CloudinaryService
     ){
     }
 
@@ -119,9 +125,12 @@ if(!user)  throw new NotFoundException('User Not Found');
 return user.role;
 }
 
-public getAllUsers():Promise<any[]>{
-  
-  return this.userRepo.find();
+/** admin list, paginated, oldest account first. The password hash is never returned. */
+public async getAllUsers(page?:unknown,limit?:unknown){
+  const paging=parsePaging(page,limit);
+  const [users,total]=await this.userRepo.findAndCount({order:{id:'ASC'},skip:paging.skip,take:paging.limit});
+  const items=users.map(({password,...other})=>other);
+  return pageResult(items,total,paging.page,paging.limit);
 }
 
 /**
@@ -130,11 +139,15 @@ public getAllUsers():Promise<any[]>{
  * @param dto 
  * @returns successfull messge
  */
-async updateUser(id:number,dto:UpdateUserDto){
+async updateUser(id:number,dto:UpdateUserDto,requireCurrentPassword:boolean=false){
 if(!dto.fullName&&!dto.password) throw new BadRequestException('No Data To Update');
 const user=await this.userRepo.findOne({where:{id}});
 if(!user) throw new NotFoundException();
 let {fullName,password}=dto;
+if(password&&requireCurrentPassword){
+  const same=dto.currentPassword?await bcrypt.compare(dto.currentPassword,user.password):false;
+  if(!same) throw new BadRequestException('Current password is incorrect');
+}
 user.fullName=fullName??user.fullName;
 if(password){
   const hashed=await bcrypt.hash(password,10);
@@ -142,6 +155,41 @@ if(password){
 }
  await this.userRepo.save(user);
  return {message:'User Updeted Successfully'}
+}
+
+/**
+ * Delete the logged-in user's own account. Needs the current password.
+ * An instructor who still has courses (and so maybe students) cannot delete the account.
+ */
+async deleteOwnAccount(id:number,password:string){
+if(!password) throw new BadRequestException('Password is required');
+const user=await this.userRepo.findOne({where:{id}});
+if(!user) throw new NotFoundException();
+const ok=await bcrypt.compare(password,user.password);
+// 400, not 401: a wrong password must not look like an expired login to the frontend
+if(!ok) throw new BadRequestException('Password is incorrect');
+if(user.role===UserRoles.INSTRACTOR){
+  const courses=await this.userRepo.manager.count(CourseEntity,{where:{Instractor:{id}}});
+  if(courses>0){
+    const students=await this.userRepo.manager.count(EnrollmentEntity,{where:{course:{Instractor:{id}}}});
+    throw new ConflictException(`This account still has ${courses} course(s) and ${students} enrolled student(s), so it cannot be deleted`);
+  }
+}
+return this.deleteUser(id);
+}
+
+/**
+ * Change the profile photo of the logged-in user. Only the new image's URL is stored.
+ */
+async updateAvatar(id:number,file:Express.Multer.File|undefined){
+assertImageFile(file,'Avatar');
+if(file!.size>MAX_AVATAR_BYTES) throw new BadRequestException('Avatar image is too large (max 2 MB)');
+const user=await this.userRepo.findOne({where:{id}});
+if(!user) throw new NotFoundException();
+const image=await this.cloudinary.uploadFile(file!,'user/avatars','image');
+user.avatar=image.secure_url;
+await this.userRepo.save(user);
+return {message:'Avatar Updated Successfully',avatar:user.avatar};
 }
 
 /**
