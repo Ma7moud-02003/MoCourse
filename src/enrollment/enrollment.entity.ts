@@ -2,9 +2,10 @@ import { CourseEntity } from "src/course/course.entity";
 import { UserEntity } from "src/User/user.entity";
 import { CURRENT_TIMESTAMP } from "src/utils/constants";
 import { EnrollmentStatus } from "src/utils/enums/enroll.enum";
-import {  Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import {  Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique } from "typeorm";
 
 @Entity({name:'enrollments'})
+@Unique('UQ_enrollments_user_course',['user','course'])
 export class EnrollmentEntity{
     @PrimaryGeneratedColumn()
     id!:number;
