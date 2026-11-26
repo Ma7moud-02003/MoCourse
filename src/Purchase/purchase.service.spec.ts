@@ -182,3 +182,36 @@ describe('buyCourse: one purchase request per student and course', () => {
     await expect(svc.buyCourse(3, 5)).rejects.toThrow('db down');
   });
 });
+
+describe('confirmCheckOut: proof submit and instructor notification', () => {
+  const png: any = { buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2]), mimetype: 'image/png', size: 10, originalname: 'a.png' };
+  const dto: any = { transactionId: 't', paymentMethod: 'instapay' };
+  function make(affected: number, notifyFails = false) {
+    const row = { id: 1, status: StatusEnum.PENDING, user: { id: 3 }, course: { id: 5, title: 'C', Instractor: { id: 9 } } };
+    const repo: any = {
+      findOne: jest.fn(async () => row),
+      createQueryBuilder: () => { const b: any = {}; b.update = () => b; b.set = () => b; b.where = () => b; b.execute = async () => ({ affected }); return b; },
+    };
+    const cloud: any = { uploadFile: jest.fn(async () => ({ secure_url: 'u', public_id: 'p' })) };
+    const notif: any = { creatNotification: jest.fn(notifyFails ? async () => { throw new Error('boom'); } : async () => undefined) };
+    return { svc: new PurchaseService(repo, {} as any, {} as any, cloud, notif), repo, notif };
+  }
+  it('loads the course and its instructor, and notifies that instructor once', async () => {
+    const { svc, repo, notif } = make(1);
+    await expect(svc.confirmCheckOut(5, dto, 3, png)).resolves.toBeUndefined();
+    expect(repo.findOne.mock.calls[0][0].relations).toEqual({ user: true, course: { Instractor: true } });
+    expect(notif.creatNotification).toHaveBeenCalledTimes(1);
+    expect(notif.creatNotification.mock.calls[0][1]).toBe(9);
+  });
+  it('a stale submit (row already decided) gets 400 and sends no notification', async () => {
+    const { svc, notif } = make(0);
+    await expect(svc.confirmCheckOut(5, dto, 3, png)).rejects.toBeInstanceOf(BadRequestException);
+    expect(notif.creatNotification).not.toHaveBeenCalled();
+  });
+  it('a notification failure does not turn a saved submission into an error', async () => {
+    const { svc } = make(1, true);
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    await expect(svc.confirmCheckOut(5, dto, 3, png)).resolves.toBeUndefined();
+    spy.mockRestore();
+  });
+});
