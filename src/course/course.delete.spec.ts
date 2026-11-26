@@ -2,13 +2,19 @@ import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { CourseService } from './course.service';
 import { UserRoles } from 'src/utils/enums/userRole.enum';
 
-function build(opts: { exams: number[]; attempts: number; ownerId?: number; removeError?: any }) {
+function build(opts: { exams: number[]; attempts: number; ownerId?: number; removeError?: any; enrolled?: number; purchases?: number }) {
   const calls: string[] = [];
   const course = { id: 5, Instractor: { id: opts.ownerId ?? 3 } };
   const manager: any = {
     findOne: jest.fn(async () => { calls.push('lock-course'); return { id: 5 }; }),
     find: jest.fn(async (_e: any, o: any) => { calls.push(o.lock ? 'lock-exams' : 'list-exams'); return opts.exams.map((id) => ({ id })); }),
-    count: jest.fn(async () => { calls.push('count-attempts'); return opts.attempts; }),
+    count: jest.fn(async (entity: any) => {
+      if (entity?.name === 'EnrollmentEntity') return opts.enrolled ?? 0;
+      if (entity?.name === 'PurchaseEntity') return opts.purchases ?? 0;
+      calls.push('count-attempts');
+      return opts.attempts;
+    }),
+    update: jest.fn(async () => { calls.push('hide'); }),
     remove: jest.fn(async (c: any) => { calls.push('remove'); if (opts.removeError) throw opts.removeError; return c; }),
   };
   const courseRepo: any = { manager: { transaction: (fn: any) => fn(manager) } };
@@ -57,5 +63,27 @@ describe('CourseService.deleteCourse protects student results', () => {
     const boom = new Error('db down');
     const b = build({ exams: [], attempts: 0, removeError: boom });
     await expect(b.service.deleteCourse(5, 3, UserRoles.INSTRACTOR)).rejects.toBe(boom);
+  });
+
+  it('a course with no students is really deleted and says so', async () => {
+    const { service, manager } = build({ exams: [], attempts: 0 });
+    const r = await service.deleteCourse(5, 3, UserRoles.INSTRACTOR);
+    expect(r).toMatchObject({ deleted: true, hidden: false });
+    expect(manager.update).not.toHaveBeenCalled();
+  });
+
+  it('a course with enrolled students is hidden (unpublished), not deleted', async () => {
+    const { service, manager } = build({ exams: [1], attempts: 2, enrolled: 4 });
+    const r = await service.deleteCourse(5, 3, UserRoles.INSTRACTOR);
+    expect(r).toMatchObject({ deleted: false, hidden: true });
+    expect(manager.remove).not.toHaveBeenCalled();
+    expect(manager.update).toHaveBeenCalledWith(expect.anything(), { id: 5 }, { isPublished: false });
+  });
+
+  it('a course with only a pending purchase is hidden too, and an admin gets the same result', async () => {
+    const { service, manager } = build({ exams: [], attempts: 0, purchases: 1 });
+    const r = await service.deleteCourse(5, 99, UserRoles.ADMIN);
+    expect(r).toMatchObject({ deleted: false, hidden: true });
+    expect(manager.remove).not.toHaveBeenCalled();
   });
 });
