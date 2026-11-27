@@ -1,4 +1,4 @@
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, Length, Max, Min } from "class-validator";
 import { CourseLevel } from "src/utils/enums/level.enum";
 
@@ -39,10 +39,11 @@ import { CourseLevel } from "src/utils/enums/level.enum";
     @IsNumber()
     discountPrice!:number
 
-    @IsNotEmpty()
+    // optional: a new course is a draft unless the teacher sends isPublished=true
+    @IsOptional()
+    @Transform(({ value }) => (value === 'true' ? true : value === 'false' ? false : value))
     @IsBoolean()
-    @Type(()=>Boolean)
-    isPublished!:boolean
+    isPublished?:boolean
 
 @IsArray()
  @IsNotEmpty()
@@ -55,4 +56,4 @@ import { CourseLevel } from "src/utils/enums/level.enum";
     @IsNumber()
     @Type(()=>Number)
     categoryId!:number
-   }
+    }
