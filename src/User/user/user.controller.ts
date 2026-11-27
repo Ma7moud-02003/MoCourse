@@ -72,7 +72,7 @@ export class UserController {
     // Change own profile photo (multipart field "avatar", image up to 2 MB)
     @Patch('avatar')
     @UseGuards(AuthGuard)
-    @UseInterceptors(FileInterceptor('avatar',{limits:{fileSize:MAX_AVATAR_BYTES+1}}))
+    @UseInterceptors(FileInterceptor('avatar',{limits:{fileSize:MAX_AVATAR_BYTES}}))
     updateAvatar(@Payload() payload:paylodType.PayloadType,@UploadedFile() file:Express.Multer.File){
      return this.userService.updateAvatar(payload.id,file)
     }
