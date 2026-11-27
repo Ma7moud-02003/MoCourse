@@ -37,3 +37,6 @@ const originalResolve = (Module as any)._resolveFilename;
   }
   return originalResolve.call(this, request, ...rest);
 };
+
+// Fallback order matters: Vercel ships `dist/` (see vercel.json) while the traced
+// bundle uses `src/`, so the first match wins at runtime.
