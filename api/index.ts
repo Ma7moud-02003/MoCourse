@@ -1,3 +1,4 @@
+import './register-paths';
 // Vercel serverless entry: boots the Nest app once per function instance and
 // forwards every request to it. Mirrors src/main.ts, minus the steps that need a
 // long-lived local process (temp-upload sweep and the DB schema-safety guards).
