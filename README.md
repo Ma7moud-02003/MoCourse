@@ -12,6 +12,7 @@ A scalable online learning platform backend built with **NestJS**, **PostgreSQL*
 - **Database:** PostgreSQL, TypeORM
 - **Auth:** JWT (`@nestjs/jwt`), bcryptjs password hashing
 - **Uploads:** Cloudinary + Multer
+- **Env:** image uploads need CLOUDINARY_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET
 - **Validation:** class-validator, class-transformer
 - **Testing:** Jest, Supertest
 
