@@ -43,12 +43,12 @@ export const tempDiskStorage: StorageEngine = {
 };
 
 /**
- * multer rejects a file that reaches `fileSize`, so the limit is cap + 1 to accept exactly the cap.
+ * multer 2.5+ accepts a file up to exactly `fileSize` and rejects anything larger, so the limit is the cap itself.
  * Read per request so an env override applies without code changes.
  */
 export const lessonUploadLimits = {
   get fileSize() {
-    return videoMaxBytes() + 1;
+    return videoMaxBytes();
   },
 };
 
