@@ -9,7 +9,7 @@ describe('QuizAttemptService.startAttempt', () => {
   beforeEach(() => jest.useFakeTimers({ doNotFake: ['setTimeout', 'nextTick', 'setImmediate'] }).setSystemTime(new Date('2026-01-01T10:00:00Z')));
   afterEach(() => jest.useRealTimers());
 
-  it('first start creates the attempt with deadline = the exam closing time (not now + a duration)', async () => {
+  it('first start creates the attempt with deadline = start + timeLimit, capped at the closing time (here both give 10:30)', async () => {
     const { service, state } = build();
     const res = await service.startAttempt(10, 7);
     expect(res.resumed).toBe(false);
@@ -101,12 +101,44 @@ describe('QuizAttemptService.startAttempt', () => {
     expect(res.expiresAt.toISOString()).toBe('2026-01-01T10:00:00.000Z');
   });
 
-  it('two students starting at different times share the same deadline', async () => {
+  it('two students starting at different times get the same deadline when the time limit reaches past the close', async () => {
     const { service } = build();
     const a = await service.startAttempt(10, 7);
     jest.setSystemTime(new Date('2026-01-01T10:20:00Z'));
     const b = await service.startAttempt(10, 8);
     expect(a.expiresAt.getTime()).toBe(b.expiresAt.getTime());
+  });
+
+  it('timeLimit shorter than the window: deadline = start + timeLimit', async () => {
+    const { service, state } = build({ timeLimit: 20, opensAt: new Date('2026-01-01T09:00:00Z'), closesAt: new Date('2026-01-01T11:00:00Z') });
+    const res = await service.startAttempt(10, 7);
+    expect(res.expiresAt.toISOString()).toBe('2026-01-01T10:20:00.000Z');
+    expect(state.attempts[0].expiresAt.toISOString()).toBe('2026-01-01T10:20:00.000Z');
+  });
+
+  it('each student gets their own timer from their own start', async () => {
+    const { service } = build({ timeLimit: 20, opensAt: new Date('2026-01-01T09:00:00Z'), closesAt: new Date('2026-01-01T11:00:00Z') });
+    const a = await service.startAttempt(10, 7);
+    jest.setSystemTime(new Date('2026-01-01T10:30:00Z'));
+    const b = await service.startAttempt(10, 8);
+    expect(a.expiresAt.toISOString()).toBe('2026-01-01T10:20:00.000Z');
+    expect(b.expiresAt.toISOString()).toBe('2026-01-01T10:50:00.000Z');
+  });
+
+  it('a late student is capped at the closing time even if timeLimit would go past it', async () => {
+    const { service } = build({ timeLimit: 60, opensAt: new Date('2026-01-01T09:00:00Z'), closesAt: new Date('2026-01-01T10:30:00Z') });
+    jest.setSystemTime(new Date('2026-01-01T10:15:00Z'));
+    const res = await service.startAttempt(10, 7);
+    expect(res.expiresAt.toISOString()).toBe('2026-01-01T10:30:00.000Z');
+  });
+
+  it('resuming keeps the original timer, it does not restart', async () => {
+    const { service } = build({ timeLimit: 20, opensAt: new Date('2026-01-01T09:00:00Z'), closesAt: new Date('2026-01-01T11:00:00Z') });
+    const first = await service.startAttempt(10, 7);
+    jest.setSystemTime(new Date('2026-01-01T10:10:00Z'));
+    const again = await service.startAttempt(10, 7);
+    expect(again.resumed).toBe(true);
+    expect(again.expiresAt.getTime()).toBe(first.expiresAt.getTime());
   });
 
   it('before the exam opens: refused with 403, nothing created', async () => {

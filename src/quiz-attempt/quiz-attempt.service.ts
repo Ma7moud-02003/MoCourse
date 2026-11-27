@@ -38,7 +38,8 @@ export class QuizAttemptService {
   /**
    * Start the student's one attempt on an exam, or resume it.
    * - first call inside the teacher's window (opensAt..closesAt): creates the attempt,
-   *   deadline = closesAt for everybody (a late entrant only gets the rest of the window)
+   *   deadline = start + the exam's timeLimit (minutes), but never later than closesAt
+   *   (a late entrant only gets the rest of the window)
    * - before opensAt, after closesAt, or an exam with no window: nothing is created
    * - later calls before the deadline: returns the same attempt, same deadline
    * - already submitted: 409 with the result
@@ -99,6 +100,11 @@ export class QuizAttemptService {
         throw new ConflictException({ message: 'This exam is closed', closesAt: locked.closesAt });
       }
 
+      // per-student timer: start + timeLimit, capped at the exam closing time.
+      // (exams created without a timeLimit store the window length, so they behave as before)
+      const byLimit = now.getTime() + locked.timeLimit * 60000;
+      const expiresAt = new Date(Math.min(byLimit, locked.closesAt.getTime()));
+
       const attempt = manager.create(QuizAttemptEntity, {
         quiz: { id: quizId },
         user: { id: studentId },
@@ -106,7 +112,7 @@ export class QuizAttemptService {
         submitted: false,
         score: 0,
         passed: false,
-        expiresAt: locked.closesAt,
+        expiresAt,
         submittedAt: null,
       });
       const saved = await manager.save(attempt);
