@@ -22,7 +22,7 @@ export class CourseController {
   }
   @Roles(UserRoles.INSTRACTOR)
   @UseGuards(AuthGuard, Roleguard)
-  @UseInterceptors(FileInterceptor('thumbnail', { limits: { fileSize: MAX_THUMBNAIL_BYTES + 1 } }))
+  @UseInterceptors(FileInterceptor('thumbnail', { limits: { fileSize: MAX_THUMBNAIL_BYTES } }))
   @Post('')
   add(@Body() body: CouurseDto, @Payload() payload: paylodType.PayloadType, @UploadedFile() file: any) {
     return this.courseServise.addNewCourse(body, file, payload.id)
@@ -56,7 +56,7 @@ export class CourseController {
   // Update Course details by instractor
   @Roles(UserRoles.INSTRACTOR, UserRoles.ADMIN)
   @UseGuards(AuthGuard, Roleguard)
-  @UseInterceptors(FileInterceptor('thumbnail', { limits: { fileSize: MAX_THUMBNAIL_BYTES + 1 } }))
+  @UseInterceptors(FileInterceptor('thumbnail', { limits: { fileSize: MAX_THUMBNAIL_BYTES } }))
   @Patch('update/:id')
   update(@Param('id', new ParseIntPipe) id: number, @Body() body: any,
     @Payload() payload: paylodType.PayloadType, @UploadedFile() file: any) {
