@@ -1,5 +1,5 @@
-import { Type } from "class-transformer/types/decorators/type.decorator";
-import { IsArray, IsBoolean, IsOptional, IsNumber, IsString, Length, Min,Max } from "class-validator";
+import { Transform, Type } from "class-transformer";
+import { IsArray, IsBoolean, IsOptional, ValidateIf, IsNumber, IsString, Length, Min,Max } from "class-validator";
 import { CourseLevel } from "src/utils/enums/level.enum";
 
 export class UpdateCouurseDto{
@@ -39,12 +39,14 @@ export class UpdateCouurseDto{
     covers!:string[];
 
 
+    // null / "" / "null" / 0 removes the discount; any other value must be 100..10000
+    @IsOptional()
+    @Transform(({ value }) => (value === undefined ? undefined : value === null || value === '' || value === 'null' ? 0 : Number(value)))
+    @ValidateIf((o) => o.discountPrice !== 0)
     @Min(100)
     @Max(10000)
-    @IsOptional()
     @IsNumber()
-    @Type(()=>Number)
-    discountPrice!:number
+    discountPrice!:number|null
 
     @IsOptional()
     @IsBoolean()
