@@ -1,3 +1,4 @@
+import { buildCertificatePdf } from './certificate-pdf';
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CertificateEntity } from './certificate.entity';
@@ -99,6 +100,20 @@ if(!certificate) throw new NotFoundException();
 if(certificate.student.id!=studentId) throw new UnauthorizedException();
 return certificate;
 } 
+
+/** The student's own certificate as a PDF file (same owner check as the single certificate read). */
+public async getCertificatePdf(studentId:number,cerfId:number){
+const certificate=await this.getSingleCertficate(studentId,cerfId);
+const buffer=await buildCertificatePdf({
+    studentName:certificate.student?.fullName ?? '',
+    courseTitle:certificate.courseTitle || certificate.course?.title || '',
+    instructorName:certificate.course?.Instractor?.fullName,
+    certificateNumber:certificate.certificateNumber,
+    issuedAt:certificate.issuedAt,
+    completedAt:certificate.completedAt,
+});
+return {buffer,fileName:`certificate-${certificate.certificateNumber}.pdf`};
+}
 
 /**
  * verfiying if certificate is found by this number 
