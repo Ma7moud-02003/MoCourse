@@ -15,7 +15,7 @@ export const DEFAULT_VIDEO_MAX_BYTES = 100_000_000;
 export const DEFAULT_PDF_MAX_BYTES = 10_000_000;
 export const DEFAULT_CONCURRENCY = 2;
 export const MAX_CONCURRENCY = 16;
-// no env value can raise a cap above this (keeps cap + 1 an exact integer)
+// no env value can raise a cap above this (keeps the cap an exact integer)
 export const HARD_MAX_BYTES = 2 ** 40;
 // a foreign temp folder whose files are all older than this is a leftover, even if its process id looks alive
 export const TEMP_MAX_AGE_MS = 60 * 60 * 1000;
