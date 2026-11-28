@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from '../user.entity';
-import { Repository } from 'typeorm';
+import { ILike, Repository } from 'typeorm';
 import { RegisterDto } from './Dtos/register.dto';
 import * as bcrypt from 'bcryptjs';
 import { LoginDto } from './Dtos/login.dto';
@@ -18,6 +18,9 @@ import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
 import { assertImageFile, MAX_AVATAR_BYTES } from 'src/utils/upload-validation';
 import { PaymentinfoService } from 'src/instructor-payment-info/paymentinfo/paymentinfo.service';
 
+// hash of a random string, used only to keep login timing the same for unknown emails
+const DUMMY_HASH = bcrypt.hashSync('not-a-real-password-' + Math.random(), 10);
+
 @Injectable()
 export class UserService {
     constructor(
@@ -31,10 +34,12 @@ export class UserService {
 
     // register function imortant 
  public async register(dto: RegisterDto) {
-  const { fullName, email, password } = dto;
+  const { fullName, password } = dto;
+  const email = dto.email?.trim();
   // public sign-up can never create an admin; only student or instructor
   const role = dto.role === UserRoles.INSTRACTOR ? UserRoles.INSTRACTOR : UserRoles.STUDENT;
-  const userInDatabase = await this.userRepo.findOne({ where: { email }});
+  // same address in another letter case counts as the same account
+  const userInDatabase = await this.userRepo.findOne({ where: { email: ILike(String(email).replace(/[\\%_]/g, '\\$&')) } });
   if (userInDatabase) {
     throw new BadRequestException('Email is already used');
   }
@@ -82,7 +87,9 @@ export class UserService {
 public async login(dto: LoginDto) {
   const { email, password } = dto;
   const userIfExist = await this.userRepo.findOne({ where: { email } });
+  // an unknown email still pays for one bcrypt check, so response time does not reveal which emails exist
   if (!userIfExist) {
+    if (password) await bcrypt.compare(password, DUMMY_HASH);
     throw new BadRequestException('Invalid Cardinality');
   }
   const isPasswordTrue = password ? await bcrypt.compare(password, userIfExist.password) : false;
