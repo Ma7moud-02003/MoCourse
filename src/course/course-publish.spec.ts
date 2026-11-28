@@ -111,7 +111,7 @@ describe('purchase and lessons on a draft course', () => {
     const lessonRepo: any = { findOne: jest.fn(async () => lesson), find: jest.fn(async () => []) };
     const sectionService: any = { getSection: jest.fn(async () => ({ id: 2, course: { id: 5, Instractor: { id: OWNER } } })) };
     const enroll: any = { verifyStudentEnrollment: jest.fn(async (u: number) => u === ENROLLED) };
-    return new LessonService(lessonRepo, sectionService, service as any, {} as any, enroll);
+    return new LessonService(lessonRepo, sectionService, service as any, { videoPlaybackUrl: (u: any) => u } as any, enroll);
   }
   const base = { id: 1, section: { id: 2 } };
 

@@ -8,6 +8,7 @@ let opts: any;
 jest.mock('cloudinary', () => ({
   v2: {
     config: jest.fn(),
+    url: (id: string, o: any) => `https://res/${o.resource_type}/${o.type}/${o.sign_url ? 's--sig--/' : ''}${id}.${o.format}`,
     uploader: {
       upload_chunked_stream: (o: any, cb: any) => {
         opts = o;
@@ -29,11 +30,24 @@ describe('CloudinaryService.uploadVideoFromPath (provider stubbed)', () => {
     const svc = new CloudinaryService({ get: () => 'x' } as any);
     const r = await svc.uploadVideoFromPath(f, 'course/vidoes');
     expect(r).toEqual({ url: 'https://x/v.mp4', publicId: 'course/vidoes/v', durationSeconds: 13 });
-    expect(opts).toEqual({ folder: 'course/vidoes', resource_type: 'video' });
+    expect(opts).toEqual({ folder: 'course/vidoes', resource_type: 'video', type: 'authenticated' });
     expect(Buffer.concat(received).length).toBe(300_000);
   });
   it('rejects when the file cannot be read', async () => {
     const svc = new CloudinaryService({ get: () => 'x' } as any);
     await expect(svc.uploadVideoFromPath('/nonexistent/file', 'f')).rejects.toThrow();
+  });
+});
+
+describe('CloudinaryService.videoPlaybackUrl', () => {
+  const svc = new CloudinaryService({ get: () => 'x' } as any);
+  it('signs authenticated videos and keeps the file extension', () => {
+    expect(svc.videoPlaybackUrl('https://res.cloudinary.com/c/video/authenticated/v1/course/vidoes/a.mp4', 'course/vidoes/a'))
+      .toBe('https://res/video/authenticated/s--sig--/course/vidoes/a.mp4');
+  });
+  it('leaves older public videos and empty values unchanged', () => {
+    const old = 'https://res.cloudinary.com/c/video/upload/v1/course/vidoes/a.mp4';
+    expect(svc.videoPlaybackUrl(old, 'course/vidoes/a')).toBe(old);
+    expect(svc.videoPlaybackUrl(undefined, undefined)).toBeUndefined();
   });
 });

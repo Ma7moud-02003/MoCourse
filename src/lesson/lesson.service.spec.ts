@@ -51,3 +51,16 @@ describe('lesson ownership', () => {
     expect(lessonRepo.remove).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('lesson playback link', () => {
+  it('returns the signed video link for an allowed viewer and never saves it', async () => {
+    const { svc, lessonRepo, cloud } = setup();
+    cloud.videoPlaybackUrl = jest.fn(() => 'signed-url');
+    lessonRepo.findOne.mockResolvedValue({ id: 1, isPreview: true, videoUrl: 'stored', videoPublicId: 'p', section: { id: 2 } });
+    (svc as any).courseService.canViewCourse = jest.fn().mockResolvedValue(true);
+    const r: any = await svc.getLesson(1, 5);
+    expect(r.videoUrl).toBe('signed-url');
+    expect(cloud.videoPlaybackUrl).toHaveBeenCalledWith('stored', 'p');
+    expect(lessonRepo.save).not.toHaveBeenCalled();
+  });
+});
