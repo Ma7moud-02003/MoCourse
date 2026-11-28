@@ -1,9 +1,11 @@
-import { IsNotEmpty } from "class-validator";
+import { IsEnum, IsNotEmpty, IsString, MaxLength } from "class-validator";
 import { PaymentMethoeEnum } from "src/utils/enums/paymentMethode.enum";
 
 export class ConfirmCheckoutDto{
-    @IsNotEmpty()
+    @IsEnum(PaymentMethoeEnum)
     paymentMethod!:PaymentMethoeEnum;
+    @IsString()
     @IsNotEmpty()
+    @MaxLength(100)
     transactionId!:string;
 }
