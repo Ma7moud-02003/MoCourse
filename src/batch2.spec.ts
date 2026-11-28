@@ -105,7 +105,7 @@ describe('password change needs the current password', () => {
 });
 
 describe('updateAvatar', () => {
-  const png: any = (size = 10) => ({ mimetype: 'image/png', size, buffer: Buffer.alloc(size, 1) });
+  const png: any = (size = 10) => ({ mimetype: 'image/png', size, buffer: Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47]), Buffer.alloc(Math.max(size - 4, 0), 1)]) });
   it('uploads an image and saves the url', async () => {
     const user: any = { id: 4, avatar: 'old' };
     const repo: any = { findOne: jest.fn(async () => user), save: jest.fn(async (x: any) => x) };
