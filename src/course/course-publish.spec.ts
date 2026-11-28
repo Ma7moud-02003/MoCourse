@@ -142,7 +142,7 @@ describe('purchase and lessons on a draft course', () => {
 });
 
 describe('addNewCourse draft default', () => {
-  const file: any = { mimetype: 'image/png', size: 10, buffer: Buffer.from('x'), originalname: 'a.png' };
+  const file: any = { mimetype: 'image/png', size: 10, buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0]), originalname: 'a.png' };
   function make() {
     const courseRepo: any = { create: jest.fn((c: any) => c), save: jest.fn(async (c: any) => c) };
     const cloud: any = { uploadFile: jest.fn(async () => ({ secure_url: 'u', public_id: 'p' })) };

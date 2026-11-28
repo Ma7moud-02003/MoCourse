@@ -227,7 +227,7 @@ export class CourseService {
         const query = {
             // drafts are hidden from the public list; admin sees everything
             ...(role === UserRoles.ADMIN ? {} : { isPublished: true }),
-            ...(title ? { title: Like(`%${title}%`) } : {}),
+            ...(title ? { title: Like(`%${String(title).replace(/[\\%_]/g, '\\$&')}%`) } : {}),
             ...priceFilter(minPrice, maxPrice),
             ...(categoryId ? { category: { id: categoryId } } : {}),
             ...(level ? { level: level } : {})

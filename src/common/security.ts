@@ -22,8 +22,28 @@ export function securityHeaders(_req: Request, res: Response, next: NextFunction
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Referrer-Policy', 'no-referrer');
+  // this server only returns JSON/files: nothing may be framed, scripted or cached by a browser or shared proxy
+  res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
   res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
   next();
+}
+
+/**
+ * Real visitor address. Behind Vercel the socket address is Vercel's own proxy, so counting it would put every
+ * visitor in one bucket (one attacker could lock everybody out). Vercel sets these headers itself and replaces any
+ * value the visitor sends. Locally (no proxy header) the socket address is used.
+ */
+export function clientIp(req: Request): string {
+  const pick = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)?.split(',')[0]?.trim();
+  return (
+    pick(req.headers?.['x-vercel-forwarded-for']) ||
+    pick(req.headers?.['x-real-ip']) ||
+    req.ip ||
+    req.socket?.remoteAddress ||
+    'unknown'
+  );
 }
 
 /**
@@ -37,7 +57,7 @@ export function createRateLimiter(max: number, windowMs: number) {
     if (hits.size > 5000) {
       for (const [key, entry] of hits) if (entry.resetAt <= now) hits.delete(key);
     }
-    const key = req.ip || req.socket?.remoteAddress || 'unknown';
+    const key = clientIp(req);
     let entry = hits.get(key);
     if (!entry || entry.resetAt <= now) {
       entry = { count: 0, resetAt: now + windowMs };
