@@ -28,6 +28,30 @@ export function parsePublished(value: unknown): boolean | undefined {
     throw new BadRequestException('isPublished must be true or false');
 }
 
+// undefined -> undefined (leave unchanged); null/""/"null"/0 -> null (remove the discount); else the number
+export function parseDiscount(value: unknown): number | null | undefined {
+    if (value === undefined) return undefined;
+    if (value === null || value === '' || value === 'null' || value === 0 || value === '0') return null;
+    const n = Number(value);
+    if (Number.isNaN(n)) throw new BadRequestException('discountPrice must be a number');
+    return n;
+}
+
+// sort choices for the course list; id always breaks ties so pages never repeat or skip a course
+export const COURSE_SORTS: Record<string, Record<string, 'ASC' | 'DESC'>> = {
+    newest: { createdAt: 'DESC', id: 'DESC' },
+    oldest: { createdAt: 'ASC', id: 'ASC' },
+    price_asc: { price: 'ASC', id: 'ASC' },
+    price_desc: { price: 'DESC', id: 'DESC' },
+    title: { title: 'ASC', id: 'ASC' },
+};
+export function parseSort(sort?: unknown) {
+    if (sort === undefined || sort === null || sort === '') return COURSE_SORTS.newest;
+    const found = COURSE_SORTS[String(sort)];
+    if (!found) throw new BadRequestException('sort must be one of: ' + Object.keys(COURSE_SORTS).join(', '));
+    return found;
+}
+
 // either bound may be sent alone; 0 is a valid bound; NaN/undefined means not sent
 export function priceFilter(minPrice?: number, maxPrice?: number) {
     const hasMin = typeof minPrice === 'number' && !Number.isNaN(minPrice);
@@ -69,7 +93,8 @@ export class CourseService {
             discountPrice: dto.discountPrice,
             Instractor: { id: insId },
             duration: dto.duration,
-            isPublished:dto.isPublished,
+            // a new course is a draft until the teacher publishes it
+            isPublished: parsePublished(dto.isPublished) ?? false,
             publicId: image.public_id,
             covers: dto.covers,
             level: dto.level,
@@ -132,7 +157,8 @@ export class CourseService {
         course.level = updateDto.level ?? course.level;
         course.duration = updateDto.duration ?? course.duration;
         course.price = updateDto.price ?? course.price;
-        course.discountPrice = updateDto.discountPrice ?? course.discountPrice;
+        const discount = parseDiscount(updateDto.discountPrice);
+        if (discount !== undefined) course.discountPrice = discount as number;
         course.covers = updateDto.covers ?? course.covers;
         course.requirements = updateDto.requirements ?? course.requirements;
         // keep the current state unless the request really sends one (multipart bodies send strings)
@@ -195,8 +221,9 @@ export class CourseService {
      * @returns all courses
      */
     public async getAllCourses(title: string, categoryId?: number,
-        minPrice?: number, maxPrice?: number, level?: CourseLevel, role?: UserRoles, page?: unknown, limit?: unknown) {
+        minPrice?: number, maxPrice?: number, level?: CourseLevel, role?: UserRoles, page?: unknown, limit?: unknown, sort?: unknown) {
         const paging = parsePaging(page, limit);
+        const order = parseSort(sort);
         const query = {
             // drafts are hidden from the public list; admin sees everything
             ...(role === UserRoles.ADMIN ? {} : { isPublished: true }),
@@ -205,10 +232,10 @@ export class CourseService {
             ...(categoryId ? { category: { id: categoryId } } : {}),
             ...(level ? { level: level } : {})
         }
-        // newest first, id breaks ties, so pages never repeat or skip a course
+        // newest first unless a sort is chosen
         const [items, total] = await this.courseRepo.findAndCount({
             where: query,
-            order: { createdAt: 'DESC', id: 'DESC' },
+            order,
             skip: paging.skip,
             take: paging.limit,
             relations: {

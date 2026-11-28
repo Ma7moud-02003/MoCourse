@@ -140,3 +140,63 @@ describe('purchase and lessons on a draft course', () => {
     await expect(t.getLesson(1, ENROLLED)).resolves.toBeTruthy();
   });
 });
+
+describe('addNewCourse draft default', () => {
+  const file: any = { mimetype: 'image/png', size: 10, buffer: Buffer.from('x'), originalname: 'a.png' };
+  function make() {
+    const courseRepo: any = { create: jest.fn((c: any) => c), save: jest.fn(async (c: any) => c) };
+    const cloud: any = { uploadFile: jest.fn(async () => ({ secure_url: 'u', public_id: 'p' })) };
+    return { service: new CourseService(courseRepo, cloud, {} as any), courseRepo };
+  }
+  it('creates a draft when isPublished is not sent', async () => {
+    const { service, courseRepo } = make();
+    await service.addNewCourse({ title: 'Title1', categoryId: 1 } as any, file, 3);
+    expect(courseRepo.create.mock.calls[0][0].isPublished).toBe(false);
+  });
+  it('publishes only when isPublished is true (boolean or form string)', async () => {
+    const a = make(); await a.service.addNewCourse({ isPublished: true } as any, file, 3);
+    expect(a.courseRepo.create.mock.calls[0][0].isPublished).toBe(true);
+    const b = make(); await b.service.addNewCourse({ isPublished: 'true' } as any, file, 3);
+    expect(b.courseRepo.create.mock.calls[0][0].isPublished).toBe(true);
+    const c = make(); await c.service.addNewCourse({ isPublished: 'false' } as any, file, 3);
+    expect(c.courseRepo.create.mock.calls[0][0].isPublished).toBe(false);
+  });
+});
+
+describe('discount removal', () => {
+  const { parseDiscount } = require('./course.service');
+  it('keeps, removes or sets the discount', () => {
+    expect(parseDiscount(undefined)).toBeUndefined();
+    for (const v of [null, '', 'null', 0, '0']) expect(parseDiscount(v)).toBeNull();
+    expect(parseDiscount('150')).toBe(150);
+    expect(() => parseDiscount('abc')).toThrow();
+  });
+  it('updateCourse clears and keeps the discount', async () => {
+    const a = build(true); a.course.discountPrice = 200;
+    await a.service.updateCourse({ discountPrice: null } as any, 5, OWNER, UserRoles.INSTRACTOR);
+    expect(a.course.discountPrice).toBeNull();
+    const b = build(true); b.course.discountPrice = 200;
+    await b.service.updateCourse({ title: 'New title' } as any, 5, OWNER, UserRoles.INSTRACTOR);
+    expect(b.course.discountPrice).toBe(200);
+  });
+  it('DTO accepts null/0 to clear and rejects 50', async () => {
+    const { validate } = require('class-validator'); const { plainToInstance } = require('class-transformer');
+    const { UpdateCouurseDto } = require('./dtos/updateCourse.dto');
+    for (const v of [null, 0, '', 'null', 150]) expect((await validate(plainToInstance(UpdateCouurseDto, { discountPrice: v }))).length).toBe(0);
+    expect((await validate(plainToInstance(UpdateCouurseDto, { discountPrice: 50 }))).length).toBe(1);
+  });
+});
+
+describe('course list sort', () => {
+  it('defaults to newest and supports the listed sorts', async () => {
+    const { service, courseRepo } = build(true);
+    await service.getAllCourses('' as any, undefined, undefined, undefined, undefined, UserRoles.STUDENT);
+    expect(courseRepo.findAndCount.mock.calls[0][0].order).toEqual({ createdAt: 'DESC', id: 'DESC' });
+    await service.getAllCourses('' as any, undefined, undefined, undefined, undefined, UserRoles.STUDENT, 1, 10, 'price_asc');
+    expect(courseRepo.findAndCount.mock.calls[1][0].order).toEqual({ price: 'ASC', id: 'ASC' });
+  });
+  it('rejects an unknown sort', async () => {
+    const { service } = build(true);
+    await expect(service.getAllCourses('' as any, undefined, undefined, undefined, undefined, UserRoles.STUDENT, 1, 10, 'x; drop')).rejects.toThrow();
+  });
+});

@@ -42,6 +42,22 @@ export class PurchaseController {
     }
 
 
+    // the student's own request status for one course (NONE / PENDING / WAITING_APPROVAL / PAID / FAILED)
+    @Get('status/:courseId')
+    @Roles(UserRoles.STUDENT)
+    @UseGuards(AuthGuard, Roleguard)
+    myStatus(@Param('courseId', new ParseIntPipe()) courseId: number, @Payload() payload: paylodType.PayloadType) {
+        return this.purServise.getMyPurchaseStatus(payload.id, courseId);
+    }
+
+    // all the student's purchase requests
+    @Get('my')
+    @Roles(UserRoles.STUDENT)
+    @UseGuards(AuthGuard, Roleguard)
+    myRequests(@Payload() payload: paylodType.PayloadType, @Query('status') status?: StatusEnum) {
+        return this.purServise.getMyPurchases(payload.id, status);
+    }
+
     @Get('myPurchases')
     @Roles(UserRoles.INSTRACTOR)
     @UseGuards(AuthGuard, Roleguard)

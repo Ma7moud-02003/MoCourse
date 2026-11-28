@@ -78,3 +78,20 @@ describe('CertificateService.creatCertification', () => {
     await expect(service.creatCertification(1, 2, 't', new Date())).rejects.toThrow('connection lost');
   });
 });
+
+describe('CertificateService.getCertificatePdf', () => {
+  const row = { id: 4, certificateNumber: 'Mo-ABC', issuedAt: new Date(), completedAt: null, courseTitle: 'كورس NestJS',
+    student: { id: 3, fullName: 'محمود' }, course: { title: 'x', Instractor: { fullName: 'أحمد' } } };
+  it('returns a PDF for the owner', async () => {
+    const { service, repo } = makeService();
+    repo.findOne.mockResolvedValue(row);
+    const r = await service.getCertificatePdf(3, 4);
+    expect(r.buffer.subarray(0, 5).toString()).toBe('%PDF-');
+    expect(r.fileName).toBe('certificate-Mo-ABC.pdf');
+  });
+  it('refuses another student', async () => {
+    const { service, repo } = makeService();
+    repo.findOne.mockResolvedValue(row);
+    await expect(service.getCertificatePdf(9, 4)).rejects.toThrow();
+  });
+});

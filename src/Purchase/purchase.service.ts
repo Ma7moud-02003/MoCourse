@@ -164,6 +164,43 @@ export class PurchaseService {
     }
 
 
+    /** The student's own purchase request for one course: NONE when there is no request yet. */
+    public async getMyPurchaseStatus(studentId: number, courseId: number) {
+        const purchase = await this.purchaseRepo.findOne({
+            where: { course: { id: courseId }, user: { id: studentId } },
+        });
+        if (!purchase) {
+            // enrolled without a request (old data): the student owns the course
+            const owns = await this.enrollService.verifyStudentEnrollment(studentId, courseId);
+            return { courseId, status: owns ? StatusEnum.PAID : 'NONE' };
+        }
+        return {
+            courseId,
+            purchaseId: purchase.id,
+            status: purchase.status,
+            amount: purchase.amount,
+            // rejected: the student can send a new request, which reopens this one
+            canRetry: purchase.status === StatusEnum.FAILED,
+        };
+    }
+
+    /** All purchase requests of the student with the course summary, newest first; optional status filter. */
+    public async getMyPurchases(studentId: number, status?: StatusEnum) {
+        if (status !== undefined && !Object.values(StatusEnum).includes(status)) {
+            throw new BadRequestException('Invalid status');
+        }
+        const rows = await this.purchaseRepo.find({
+            where: { user: { id: studentId }, ...(status ? { status } : {}) },
+            relations: { course: true },
+            select: { course: { id: true, title: true, thumbnail: true, price: true, discountPrice: true } },
+            order: { id: 'DESC' },
+        });
+        return rows.map((p) => ({
+            purchaseId: p.id, status: p.status, amount: p.amount,
+            canRetry: p.status === StatusEnum.FAILED, course: p.course,
+        }));
+    }
+
     public async getInsPurchase(insId: number, status?: StatusEnum) {
         const query = { ...(status ? { status: status } : {}), course: { Instractor: { id: insId } } };
         const purchases = await this.purchaseRepo.find({
