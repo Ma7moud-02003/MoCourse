@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 import { UserRoles } from "src/utils/enums/userRole.enum";
 
 export class RegisterDto{
@@ -8,6 +8,7 @@ export class RegisterDto{
 fullName:string|undefined;
 
 @MaxLength(100)
+@IsEmail()
 @IsString() 
 @IsNotEmpty()
 email:string|undefined;
