@@ -64,18 +64,24 @@ export class LessonService {
         const lessonCourseId = sectionForCourse?.course.id;
         if (!lessonCourseId) throw new BadRequestException();
         if (!(await this.courseService.canViewCourse(lessonCourseId, userId, role))) throw new NotFoundException('Lesson Not Found');
-        if (lesson.isPreview) return lesson;
+        if (lesson.isPreview) return this.withPlayback(lesson);
         const isUserOwnTheCourse = await this.verifyInstractorPeriorty(sectionId, userId);
-        if (isUserOwnTheCourse) return await this.lessonRepo.findOne({ where: { id: lessonId } });
+        if (isUserOwnTheCourse) return this.withPlayback(await this.lessonRepo.findOne({ where: { id: lessonId } }));
         const section = await this.sectionService.getSection(sectionId);
         const courseId = section?.course.id;
         if (!courseId) throw new BadRequestException();
         const verifyed = await this.verifyStudentEnrollment(userId, courseId);
-        if (verifyed) return lesson;
-        if (lesson?.isPreview) return lesson;
+        if (verifyed) return this.withPlayback(lesson);
+        if (lesson?.isPreview) return this.withPlayback(lesson);
         const enroll = await this.verifyStudentEnrollment(userId, courseId);
         if (!enroll) throw new UnauthorizedException('You need to purchase this course');
-        return lesson;
+        return this.withPlayback(lesson);
+    }
+
+    /** A copy of the lesson whose videoUrl is the playable (signed) link. Never saved back to the database. */
+    private withPlayback<T extends { videoUrl?: string; videoPublicId?: string } | null>(lesson: T): T {
+        if (!lesson) return lesson;
+        return { ...lesson, videoUrl: this.cloudinaryService.videoPlaybackUrl(lesson.videoUrl, lesson.videoPublicId) } as T;
     }
 
 
@@ -87,10 +93,11 @@ export class LessonService {
         if (!(await this.courseService.canViewCourse(listSection.course.id, userId, role))) throw new NotFoundException('Section not found');
         const vrified = await this.verifyInstractorPeriorty(sectionId, userId);
         if (vrified) {
-            return await this.lessonRepo.find({
+            const own = await this.lessonRepo.find({
             where: { section: { id: sectionId } },
             order: { order: 'ASC' }
-        }); 
+        });
+            return own.map((l) => this.withPlayback(l));
         }
         return await this.lessonRepo.find({
             where: { section: { id: sectionId } },
