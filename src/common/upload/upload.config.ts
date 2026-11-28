@@ -7,11 +7,11 @@ import { join } from 'path';
  * or plan later is a config change, not a code change. Invalid values (not a whole number, zero, negative,
  * empty) fall back to the default; values above the hard maximum are clamped to it.
  *
- * Video default 100,000,000 bytes and PDF default 10,000,000 bytes: Cloudinary's compare-plans page lists
- * "100 MB" video and "10 MB" raw (PDF) per-file maximums for the free plan. The page does not say MB or MiB,
- * so the smaller decimal reading is used. Provisional technical defaults, not a guarantee the account accepts them.
+ * Video default 120,000,000 bytes (the owner's choice) and PDF default 10,000,000 bytes.
+ * Note: Cloudinary's compare-plans page lists a 100 MB video limit on the FREE plan (Plus: 2 GB), so on the
+ * free plan a video between 100 and 120 MB passes our check and is then refused by Cloudinary.
  */
-export const DEFAULT_VIDEO_MAX_BYTES = 100_000_000;
+export const DEFAULT_VIDEO_MAX_BYTES = 120_000_000;
 export const DEFAULT_PDF_MAX_BYTES = 10_000_000;
 export const DEFAULT_CONCURRENCY = 2;
 export const MAX_CONCURRENCY = 16;
