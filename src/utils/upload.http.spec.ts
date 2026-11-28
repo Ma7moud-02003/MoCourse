@@ -69,8 +69,8 @@ describe('upload routes over HTTP (stubbed Cloudinary)', () => {
     expect(cloud.uploadFile).toHaveBeenCalledTimes(1);
   });
   const MB = 1024 * 1024;
-  const post = (n: number) => request(app.getHttpServer()).post('/api/course/').field('title', 't').attach('thumbnail', Buffer.alloc(n), { filename: 'a.png', contentType: 'image/png' });
-  const confirm = (n: number) => request(app.getHttpServer()).patch('/api/buy/confirm/5').field('transactionId', 't').field('paymentMethod', 'x').attach('thumbnail', Buffer.alloc(n), { filename: 'a.png', contentType: 'image/png' });
+  const post = (n: number) => request(app.getHttpServer()).post('/api/course/').field('title', 't').attach('thumbnail', (() => { const b = Buffer.alloc(n); Buffer.from([0x89, 0x50, 0x4e, 0x47]).copy(b); return b; })(), { filename: 'a.png', contentType: 'image/png' });
+  const confirm = (n: number) => request(app.getHttpServer()).patch('/api/buy/confirm/5').field('transactionId', 't').field('paymentMethod', 'instapay').attach('thumbnail', (() => { const b = Buffer.alloc(n); Buffer.from([0x89, 0x50, 0x4e, 0x47]).copy(b); return b; })(), { filename: 'a.png', contentType: 'image/png' });
   it('course thumbnail that is not an image: 400, no upload', async () => {
     await request(app.getHttpServer()).post('/api/course/').field('title', 't').attach('thumbnail', Buffer.from('x'), { filename: 'a.pdf', contentType: 'application/pdf' }).expect(400);
     expect(cloud.uploadFile).not.toHaveBeenCalled();
@@ -88,11 +88,11 @@ describe('upload routes over HTTP (stubbed Cloudinary)', () => {
     expect(cloud.uploadFile).toHaveBeenCalledTimes(1);
   });
   it('payment proof that is not an image: 400, no upload', async () => {
-    await request(app.getHttpServer()).patch('/api/buy/confirm/5').field('transactionId', 't').field('paymentMethod', 'x').attach('thumbnail', Buffer.from('x'), { filename: 'a.pdf', contentType: 'application/pdf' }).expect(400);
+    await request(app.getHttpServer()).patch('/api/buy/confirm/5').field('transactionId', 't').field('paymentMethod', 'instapay').attach('thumbnail', Buffer.from('x'), { filename: 'a.pdf', contentType: 'application/pdf' }).expect(400);
     expect(cloud.uploadFile).not.toHaveBeenCalled();
   });
   it('purchase confirm without screenshot: 400, no upload', async () => {
-    await request(app.getHttpServer()).patch('/api/buy/confirm/5').field('transactionId', 't').field('paymentMethod', 'x').expect(400);
+    await request(app.getHttpServer()).patch('/api/buy/confirm/5').field('transactionId', 't').field('paymentMethod', 'instapay').expect(400);
     expect(cloud.uploadFile).not.toHaveBeenCalled();
   });
   it('lesson upload without file: 400, no upload', async () => {
